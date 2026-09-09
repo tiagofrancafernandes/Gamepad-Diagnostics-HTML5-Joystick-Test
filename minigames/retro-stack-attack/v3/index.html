@@ -54,6 +54,22 @@
             padding: 12px 20px;
             border-radius: 8px;
             border: 1px solid var(--border);
+       }
+
+        .nav-links-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-links-container a {
+            text-decoration: none;
+            color: #4ade80;
+        }
+
+        .nav-links-container a:hover {
+            text-decoration: underline;
+            color: #94a3b8;
         }
 
         .layout-tag {
@@ -281,18 +297,11 @@
                 <h2>Stack Attack & Diagnostics (Siemens Retro)</h2>
                 <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
             </div>
+            <div class="nav-links-container">
+                <a href="/minigames/" style="text-decoration: none;">🎮🕹️ Minigames</a>
+            </div>
             <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
         </header>
-
-        <div class="hud-panel">
-            <div class="hud-header">
-                <span class="hud-label">Active Inputs</span>
-                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
-            </div>
-            <div id="pressedStream" class="pressed-buttons-stream">
-                <span class="empty-badges-hint">No buttons pressed</span>
-            </div>
-        </div>
 
         <div class="toolbar">
             <div class="toolbar-group">
@@ -323,6 +332,16 @@
             <div id="gameOverlay" class="game-overlay">
                 <h1 style="font-size: 2.2rem; letter-spacing: 2px;">STACK ATTACK</h1>
                 <p id="overlayInstructions">Press Jump / Start to work in the warehouse.</p>
+            </div>
+        </div>
+
+        <div class="hud-panel">
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
+            <div id="pressedStream" class="pressed-buttons-stream">
+                <span class="empty-badges-hint">No buttons pressed</span>
             </div>
         </div>
     </div>

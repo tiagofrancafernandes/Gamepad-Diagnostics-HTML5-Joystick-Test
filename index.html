@@ -54,6 +54,22 @@
             align-items: center;
         }
 
+        .nav-links-container {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        .nav-links-container a {
+            text-decoration: none;
+            color: #4ade80;
+        }
+
+        .nav-links-container a:hover {
+            text-decoration: underline;
+            color: #94a3b8;
+        }
+
         select, button {
             background: var(--card-bg);
             border: 1px solid var(--border-color);
@@ -158,6 +174,9 @@
     <div class="container">
         <header>
             <h2>Gamepad Diagnostics</h2>
+            <div class="nav-links-container">
+                <a href="/minigames/" style="text-decoration: none;">🎮🕹️ Minigames</a>
+            </div>
             <div class="controls-panel">
                 <label for="layoutSelector">Layout:</label>
                 <select id="layoutSelector">
