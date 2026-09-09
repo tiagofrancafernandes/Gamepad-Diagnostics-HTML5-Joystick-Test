@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Snake - Gamepad Arcade</title>
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --panel-bg: #131b2e;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --nokia-screen: #879372;
+            --nokia-pixels: #1b2612;
+            --nokia-grid: #7c8967;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .layout-tag {
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+
+        .haptic-note {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .pressed-buttons-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 38px;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .btn-badge {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 0 8px var(--accent-glow);
+            letter-spacing: 0.05em;
+        }
+
+        .empty-badges-hint {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-style: italic;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, button.action-btn {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        select:focus, button.action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 440px;
+            background: var(--nokia-screen);
+            border: 3px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .canvas-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(135, 147, 114, 0.9);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(2px);
+            color: var(--nokia-pixels);
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .remap-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .remap-section.open {
+            display: flex;
+        }
+
+        .remap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--accent);
+        }
+
+        .remap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .remap-item {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remap-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .remap-btn:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .remap-btn.listening {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        .reset-link {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <div>
+                <h2>Retro Snake & Diagnostics</h2>
+                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
+            </div>
+            <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
+        </header>
+
+        <div class="hud-panel">
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
+            <div id="pressedStream" class="pressed-buttons-stream">
+                <span class="empty-badges-hint">No buttons pressed</span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Speed:</label>
+                <select id="speedSelect">
+                    <option value="slow">Slow</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="toggleRemapBtn" class="action-btn">⚙️ Configure Controls</button>
+                <button id="fullscreenBtn" class="action-btn">⛶ Fullscreen</button>
+            </div>
+        </div>
+
+        <div id="remapSection" class="remap-section">
+            <div class="remap-header">
+                <h3>Input Mapping Configuration</h3>
+                <button id="resetDefaultsBtn" class="reset-link">Reset Defaults</button>
+            </div>
+            <div class="remap-grid" id="remapGridContainer"></div>
+        </div>
+
+        <div id="canvasWrapper" class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="440"></canvas>
+            <div id="gameOverlay" class="game-overlay">
+                <h1 style="font-size: 2.2rem; letter-spacing: 2px;">NOKIA SNAKE</h1>
+                <p id="overlayInstructions">Press Start / Confirm to play.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUTTON_NAMES = {
+            xbox: {
+                0: 'A', 1: 'B', 2: 'X', 3: 'Y',
+                4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
+                8: 'Back', 9: 'Start', 10: 'LS', 11: 'RS',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'Xbox'
+            },
+            playstation: {
+                0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle',
+                4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2',
+                8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'PS', 17: 'Touchpad'
+            }
+        };
+
+        const DEFAULT_MAPPINGS = {
+            start: { label: 'Start / Confirm', buttonIndex: 0 },
+            moveUp: { label: 'Turn Up', buttonIndex: 12 },
+            moveDown: { label: 'Turn Down', buttonIndex: 13 },
+            moveLeft: { label: 'Turn Left', buttonIndex: 14 },
+            moveRight: { label: 'Turn Right', buttonIndex: 15 }
+        };
+
+        // Milliseconds per step (Lower = faster)
+        const SPEED_CONFIG = {
+            slow: 220,    // Very slow / kids mode
+            normal: 120,  // Classic balance
+            fast: 80      // Agile but manageable
+        };
+
+        let currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+        let listeningAction = null;
+        let activeGamepadIndex = null;
+        let controllerProfile = 'xbox';
+        let stepIntervalMs = SPEED_CONFIG.normal;
+
+        const pressedStream = document.getElementById('pressedStream');
+        const controllerName = document.getElementById('controllerName');
+        const layoutBadge = document.getElementById('layoutBadge');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayInstructions = document.getElementById('overlayInstructions');
+        const remapSection = document.getElementById('remapSection');
+        const toggleRemapBtn = document.getElementById('toggleRemapBtn');
+        const remapGridContainer = document.getElementById('remapGridContainer');
+        const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+        const speedSelect = document.getElementById('speedSelect');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function detectProfile(idStr) {
+            const id = (idStr || '').toLowerCase();
+            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) {
+                return 'playstation';
+            }
+            return 'xbox';
+        }
+
+        function getButtonLabel(index) {
+            const profileMap = BUTTON_NAMES[controllerProfile] || BUTTON_NAMES.xbox;
+            return profileMap[index] || `B${index}`;
+        }
+
+        toggleRemapBtn.addEventListener('click', () => {
+            remapSection.classList.toggle('open');
+            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Close Controls' : '⚙️ Configure Controls';
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            stepIntervalMs = SPEED_CONFIG[e.target.value] || SPEED_CONFIG.normal;
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                canvasWrapper.requestFullscreen().catch(err => {
+                    console.error(`Error attempting fullscreen: ${err.message}`);
+                });
+                return;
+            }
+            document.exitFullscreen();
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+        });
+
+        async function triggerRumble(weak = 0.4, strong = 0.4, duration = 120) {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = activeGamepadIndex !== null ? gamepads[activeGamepadIndex] : null;
+            if (!gp) {
+                return;
+            }
+
+            if (gp.vibrationActuator) {
+                try {
+                    await gp.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weak,
+                        strongMagnitude: strong
+                    });
+                } catch (e) {}
+                return;
+            }
+
+            if (Array.isArray(gp.hapticActuators) && gp.hapticActuators.length > 0) {
+                try {
+                    const actuator = gp.hapticActuators[0];
+                    if (typeof actuator.pulse === 'function') {
+                        await actuator.pulse(strong, duration);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function renderRemapUI() {
+            remapGridContainer.innerHTML = '';
+            Object.keys(currentMappings).forEach(actionKey => {
+                const map = currentMappings[actionKey];
+                const div = document.createElement('div');
+                div.className = 'remap-item';
+                div.innerHTML = `
+                    <span style="font-size:0.85rem;">${map.label}</span>
+                    <button class="remap-btn ${listeningAction === actionKey ? 'listening' : ''}"
+                            data-action="${actionKey}">
+                        ${listeningAction === actionKey ? 'Press any button...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
+                    </button>
+                `;
+                remapGridContainer.appendChild(div);
+            });
+
+            document.querySelectorAll('.remap-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    listeningAction = e.currentTarget.getAttribute('data-action');
+                    renderRemapUI();
+                });
+            });
+        }
+
+        resetDefaultsBtn.addEventListener('click', () => {
+            currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepadconnected', (e) => {
+            activeGamepadIndex = e.gamepad.index;
+            controllerProfile = detectProfile(e.gamepad.id);
+            controllerName.textContent = e.gamepad.id;
+            layoutBadge.textContent = `Layout: ${controllerProfile === 'playstation' ? 'PlayStation' : 'Xbox'}`;
+            overlayInstructions.textContent = 'Press Start / Confirm to Start!';
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (activeGamepadIndex !== e.gamepad.index) {
+                return;
+            }
+            activeGamepadIndex = null;
+            controllerName.textContent = 'Gamepad disconnected.';
+            layoutBadge.textContent = 'Layout: Disconnected';
+            gameState.running = false;
+            gameOverlay.style.display = 'flex';
+            overlayInstructions.textContent = 'Connect a controller to resume.';
+            pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+        });
+
+        /* =================== RETRO SNAKE ENGINE =================== */
+        const GRID_SIZE = 20; // 20px per cell
+        const COLS = Math.floor(canvas.width / GRID_SIZE); // 45 cols
+        const ROWS = Math.floor(canvas.height / GRID_SIZE); // 22 rows
+
+        const gameState = {
+            running: false,
+            score: 0,
+            snake: [],
+            dir: { x: 1, y: 0 },
+            nextDir: { x: 1, y: 0 },
+            food: { x: 10, y: 10 },
+            lastTick: 0
+        };
+
+        function startOrRestartGame() {
+            gameState.running = true;
+            gameState.score = 0;
+            gameState.dir = { x: 1, y: 0 };
+            gameState.nextDir = { x: 1, y: 0 };
+
+            // Initial Snake body: 4 segments
+            gameState.snake = [
+                { x: 14, y: 10 },
+                { x: 13, y: 10 },
+                { x: 12, y: 10 },
+                { x: 11, y: 10 }
+            ];
+
+            spawnFood();
+            gameOverlay.style.display = 'none';
+        }
+
+        function spawnFood() {
+            let valid = false;
+            while (!valid) {
+                const candidateX = Math.floor(Math.random() * COLS);
+                const candidateY = Math.floor(Math.random() * ROWS);
+
+                const overlaps = gameState.snake.some(seg => seg.x === candidateX && seg.y === candidateY);
+                if (!overlaps) {
+                    gameState.food = { x: candidateX, y: candidateY };
+                    valid = true;
+                }
+            }
+        }
+
+        let prevButtons = [];
+
+        function gameLoop(timestamp) {
+            requestAnimationFrame(gameLoop);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                gp = gamepads[activeGamepadIndex];
+            } else {
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        activeGamepadIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            const activeBadges = [];
+
+            if (gp) {
+                for (let idx = 0; idx < gp.buttons.length; idx++) {
+                    const btn = gp.buttons[idx];
+                    const isPressed = btn.pressed || btn.value > 0.15;
+
+                    if (isPressed) {
+                        const name = getButtonLabel(idx);
+                        activeBadges.push(`${name}(${idx})`);
+
+                        if (listeningAction && !prevButtons[idx]) {
+                            currentMappings[listeningAction].buttonIndex = idx;
+                            listeningAction = null;
+                            renderRemapUI();
+                        }
+                    }
+                }
+
+                if (activeBadges.length > 0) {
+                    pressedStream.innerHTML = activeBadges.map(item => `<span class="btn-badge">${item}</span>`).join(' ');
+                } else {
+                    pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+                }
+            }
+
+            // Input Handling
+            if (gp && !listeningAction) {
+                const isActionPressed = (actionKey) => {
+                    const mappedIdx = currentMappings[actionKey].buttonIndex;
+                    return gp.buttons[mappedIdx]?.pressed || gp.buttons[mappedIdx]?.value > 0.3;
+                };
+
+                let stickX = gp.axes[0] || 0;
+                let stickY = gp.axes[1] || 0;
+                if (Math.abs(stickX) < 0.3) stickX = 0;
+                if (Math.abs(stickY) < 0.3) stickY = 0;
+
+                const wantUp = isActionPressed('moveUp') || stickY < -0.4;
+                const wantDown = isActionPressed('moveDown') || stickY > 0.4;
+                const wantLeft = isActionPressed('moveLeft') || stickX < -0.4;
+                const wantRight = isActionPressed('moveRight') || stickX > 0.4;
+
+                if (!gameState.running) {
+                    if (isActionPressed('start') && !prevButtons[currentMappings.start.buttonIndex]) {
+                        startOrRestartGame();
+                    }
+                } else {
+                    // Prevent reversing directly onto itself
+                    if (wantUp && gameState.dir.y === 0) {
+                        gameState.nextDir = { x: 0, y: -1 };
+                    } else if (wantDown && gameState.dir.y === 0) {
+                        gameState.nextDir = { x: 0, y: 1 };
+                    } else if (wantLeft && gameState.dir.x === 0) {
+                        gameState.nextDir = { x: -1, y: 0 };
+                    } else if (wantRight && gameState.dir.x === 0) {
+                        gameState.nextDir = { x: 1, y: 0 };
+                    }
+                }
+
+                prevButtons = gp.buttons.map(b => b.pressed || b.value > 0.15);
+            }
+
+            // Game Logic Step (Timer based)
+            if (gameState.running && timestamp - gameState.lastTick > stepIntervalMs) {
+                gameState.lastTick = timestamp;
+                gameState.dir = { ...gameState.nextDir };
+
+                const head = gameState.snake[0];
+                let nextX = head.x + gameState.dir.x;
+                let nextY = head.y + gameState.dir.y;
+
+                // Screen Wrap (Nokia style without fatal walls)
+                if (nextX < 0) nextX = COLS - 1;
+                if (nextX >= COLS) nextX = 0;
+                if (nextY < 0) nextY = ROWS - 1;
+                if (nextY >= ROWS) nextY = 0;
+
+                // Self Collision Check Only
+                const hitSelf = gameState.snake.some(seg => seg.x === nextX && seg.y === nextY);
+
+                if (hitSelf) {
+                    triggerRumble(0.9, 0.9, 500); // Strong rumble on collision
+                    gameState.running = false;
+                    gameOverlay.style.display = 'flex';
+                    overlayInstructions.innerHTML = `<span style="font-weight:bold;">GAME OVER</span><br>Score: ${gameState.score}<br><br>Press Start / Confirm to play`;
+                } else {
+                    const newHead = { x: nextX, y: nextY };
+                    gameState.snake.unshift(newHead);
+
+                    // Check Eating Food
+                    if (nextX === gameState.food.x && nextY === gameState.food.y) {
+                        gameState.score += 10;
+                        triggerRumble(0.15, 0.15, 50); // Light, short rumble on food
+                        spawnFood();
+                    } else {
+                        // Move forward: discard tail
+                        gameState.snake.pop();
+                    }
+                }
+            }
+
+            // Render LCD Visuals
+            ctx.fillStyle = '#879372';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle LCD grid pattern
+            ctx.fillStyle = '#7c8967';
+            for (let c = 0; c < COLS; c++) {
+                for (let r = 0; r < ROWS; r++) {
+                    ctx.fillRect(c * GRID_SIZE, r * GRID_SIZE, 1, 1);
+                }
+            }
+
+            if (gameState.running) {
+                // Render Food (Pixelated classic block)
+                ctx.fillStyle = '#1b2612';
+                ctx.fillRect(
+                    gameState.food.x * GRID_SIZE + 2,
+                    gameState.food.y * GRID_SIZE + 2,
+                    GRID_SIZE - 4,
+                    GRID_SIZE - 4
+                );
+                // Inner highlight pixel
+                ctx.fillStyle = '#879372';
+                ctx.fillRect(
+                    gameState.food.x * GRID_SIZE + 6,
+                    gameState.food.y * GRID_SIZE + 6,
+                    GRID_SIZE - 12,
+                    GRID_SIZE - 12
+                );
+
+                // Render Snake Body
+                ctx.fillStyle = '#1b2612';
+                gameState.snake.forEach((seg, i) => {
+                    const padding = i === 0 ? 1 : 2;
+                    ctx.fillRect(
+                        seg.x * GRID_SIZE + padding,
+                        seg.y * GRID_SIZE + padding,
+                        GRID_SIZE - padding * 2,
+                        GRID_SIZE - padding * 2
+                    );
+                });
+
+                // Render Score
+                ctx.fillStyle = '#1b2612';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText(`SCORE: ${gameState.score}`, 16, 26);
+            }
+        }
+
+        renderRemapUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
