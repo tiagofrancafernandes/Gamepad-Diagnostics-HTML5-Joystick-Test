@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -62,7 +62,6 @@
             border: 1px solid var(--border);
         }
 
-        /* Top HUD: Botões Ativos em TECLA(CODIGO) */
         .hud-panel {
             background: var(--panel-bg);
             border: 1px solid var(--border);
@@ -73,11 +72,23 @@
             gap: 6px;
         }
 
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
         .hud-label {
             font-size: 0.75rem;
             text-transform: uppercase;
             letter-spacing: 0.08em;
             color: var(--text-dim);
+        }
+
+        .haptic-note {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-style: italic;
         }
 
         .pressed-buttons-stream {
@@ -110,7 +121,6 @@
             font-family: 'Segoe UI', sans-serif;
         }
 
-        /* Toolbar com Seletor de Velocidade e Fullscreen */
         .toolbar {
             display: flex;
             justify-content: space-between;
@@ -145,7 +155,6 @@
             color: var(--accent);
         }
 
-        /* Game Screen Area */
         .canvas-wrapper {
             position: relative;
             width: 100%;
@@ -157,7 +166,6 @@
             box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
         }
 
-        /* Fullscreen handling */
         .canvas-wrapper:fullscreen {
             width: 100vw !important;
             height: 100vh !important;
@@ -183,13 +191,12 @@
             backdrop-filter: blur(4px);
         }
 
-        /* Colapsável: Painel de Remapeamento */
         .remap-section {
             background: var(--panel-bg);
             border: 1px solid var(--border);
             border-radius: 8px;
             padding: 16px;
-            display: none; /* Colapsado por padrão */
+            display: none;
             flex-direction: column;
             gap: 12px;
         }
@@ -264,58 +271,56 @@
     <div class="main-container">
         <header>
             <div>
-                <h2>Gamepad Arcade & Tester</h2>
-                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Pressione qualquer botão no joystick</span>
+                <h2>Gamepad Arcade & Diagnostics</h2>
+                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
             </div>
-            <div id="layoutBadge" class="layout-tag">Layout: Desconectado</div>
+            <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
         </header>
 
-        <!-- Top HUD: Entradas Ativas -->
         <div class="hud-panel">
-            <span class="hud-label">Entradas Ativas</span>
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
             <div id="pressedStream" class="pressed-buttons-stream">
-                <span class="empty-badges-hint">Nenhum botão pressionado</span>
+                <span class="empty-badges-hint">No buttons pressed</span>
             </div>
         </div>
 
-        <!-- Barra de Ações: Velocidade, Configurar Teclas e Tela Cheia -->
         <div class="toolbar">
             <div class="toolbar-group">
-                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Velocidade:</label>
+                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Asteroid Speed:</label>
                 <select id="speedSelect">
-                    <option value="slow">Lento</option>
+                    <option value="slow">Slow</option>
                     <option value="normal" selected>Normal</option>
-                    <option value="fast">Rápido</option>
+                    <option value="fast">Fast</option>
                 </select>
             </div>
 
             <div class="toolbar-group">
-                <button id="toggleRemapBtn" class="action-btn">⚙️ Configurar Teclas</button>
-                <button id="fullscreenBtn" class="action-btn">⛶ Tela Cheia</button>
+                <button id="toggleRemapBtn" class="action-btn">⚙️ Configure Controls</button>
+                <button id="fullscreenBtn" class="action-btn">⛶ Fullscreen</button>
             </div>
         </div>
 
-        <!-- Painel de Remapeamento Colapsável -->
         <div id="remapSection" class="remap-section">
             <div class="remap-header">
-                <h3>Configuração de Controles</h3>
-                <button id="resetDefaultsBtn" class="reset-link">Restaurar Padrão</button>
+                <h3>Input Mapping Configuration</h3>
+                <button id="resetDefaultsBtn" class="reset-link">Reset Defaults</button>
             </div>
             <div class="remap-grid" id="remapGridContainer"></div>
         </div>
 
-        <!-- Área do Jogo -->
         <div id="canvasWrapper" class="canvas-wrapper">
             <canvas id="gameCanvas" width="900" height="440"></canvas>
             <div id="gameOverlay" class="game-overlay">
                 <h1 style="font-size: 2rem;">ASTEROID DEFENDER</h1>
-                <p id="overlayInstructions" style="color: var(--text-dim);">Pressione qualquer botão no joystick para começar.</p>
+                <p id="overlayInstructions" style="color: var(--text-dim);">Press any button on your gamepad to start.</p>
             </div>
         </div>
     </div>
 
     <script>
-        // Mapeamentos nominais para visualização
         const BUTTON_NAMES = {
             xbox: {
                 0: 'A', 1: 'B', 2: 'X', 3: 'Y',
@@ -334,15 +339,14 @@
         };
 
         const DEFAULT_MAPPINGS = {
-            shoot: { label: 'Atirar / Confirmar', buttonIndex: 0 },
-            boost: { label: 'Turbo / Acelerar', buttonIndex: 1 },
-            moveUp: { label: 'Mover Cima', buttonIndex: 12 },
-            moveDown: { label: 'Mover Baixo', buttonIndex: 13 },
-            moveLeft: { label: 'Mover Esquerda', buttonIndex: 14 },
-            moveRight: { label: 'Mover Direita', buttonIndex: 15 }
+            shoot: { label: 'Shoot / Confirm', buttonIndex: 0 },
+            boost: { label: 'Boost / Sprint', buttonIndex: 1 },
+            moveUp: { label: 'Move Up', buttonIndex: 12 },
+            moveDown: { label: 'Move Down', buttonIndex: 13 },
+            moveLeft: { label: 'Move Left', buttonIndex: 14 },
+            moveRight: { label: 'Move Right', buttonIndex: 15 }
         };
 
-        // Multiplicadores de velocidade dos asteroides
         const SPEED_FACTORS = {
             slow: 0.4,
             normal: 0.7,
@@ -355,7 +359,6 @@
         let controllerProfile = 'xbox';
         let currentSpeedFactor = SPEED_FACTORS.normal;
 
-        // Elementos DOM
         const pressedStream = document.getElementById('pressedStream');
         const controllerName = document.getElementById('controllerName');
         const layoutBadge = document.getElementById('layoutBadge');
@@ -373,7 +376,9 @@
 
         function detectProfile(idStr) {
             const id = (idStr || '').toLowerCase();
-            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) return 'playstation';
+            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) {
+                return 'playstation';
+            }
             return 'xbox';
         }
 
@@ -382,35 +387,33 @@
             return profileMap[index] || `B${index}`;
         }
 
-        // Toggle do painel de remapeamento
         toggleRemapBtn.addEventListener('click', () => {
             remapSection.classList.toggle('open');
-            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Fechar Teclas' : '⚙️ Configurar Teclas';
+            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Close Controls' : '⚙️ Configure Controls';
         });
 
-        // Seletor de Velocidade
         speedSelect.addEventListener('change', (e) => {
             currentSpeedFactor = SPEED_FACTORS[e.target.value] || SPEED_FACTORS.normal;
         });
 
-        // Fullscreen
         fullscreenBtn.addEventListener('click', () => {
             if (!document.fullscreenElement) {
                 canvasWrapper.requestFullscreen().catch(err => {
-                    console.error(`Erro ao ativar tela cheia: ${err.message}`);
+                    console.error(`Error attempting fullscreen: ${err.message}`);
                 });
-            } else {
-                document.exitFullscreen();
+                return;
             }
+            document.exitFullscreen();
         });
 
         document.addEventListener('fullscreenchange', () => {
-            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Sair da Tela Cheia' : '⛶ Tela Cheia';
+            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
         });
 
-        // Haptic Feedback / Vibração
         async function triggerRumble(weak = 0.4, strong = 0.4, duration = 120) {
-            if (activeGamepadIndex === null) return;
+            if (activeGamepadIndex === null) {
+                return;
+            }
             const gp = navigator.getGamepads()[activeGamepadIndex];
             if (gp?.vibrationActuator) {
                 try {
@@ -424,7 +427,6 @@
             }
         }
 
-        // Renderiza UI do painel de remapeamento
         function renderRemapUI() {
             remapGridContainer.innerHTML = '';
             Object.keys(currentMappings).forEach(actionKey => {
@@ -435,7 +437,7 @@
                     <span style="font-size:0.85rem;">${map.label}</span>
                     <button class="remap-btn ${listeningAction === actionKey ? 'listening' : ''}"
                             data-action="${actionKey}">
-                        ${listeningAction === actionKey ? 'Aperte um botão...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
+                        ${listeningAction === actionKey ? 'Press any button...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
                     </button>
                 `;
                 remapGridContainer.appendChild(div);
@@ -454,29 +456,28 @@
             renderRemapUI();
         });
 
-        // Conexão do Gamepad
         window.addEventListener('gamepadconnected', (e) => {
             activeGamepadIndex = e.gamepad.index;
             controllerProfile = detectProfile(e.gamepad.id);
             controllerName.textContent = e.gamepad.id;
             layoutBadge.textContent = `Layout: ${controllerProfile === 'playstation' ? 'PlayStation' : 'Xbox'}`;
-            overlayInstructions.textContent = "Pressione Atirar para Iniciar!";
+            overlayInstructions.textContent = 'Press Shoot to Start!';
             renderRemapUI();
         });
 
         window.addEventListener('gamepaddisconnected', (e) => {
-            if (activeGamepadIndex === e.gamepad.index) {
-                activeGamepadIndex = null;
-                controllerName.textContent = "Gamepad desconectado.";
-                layoutBadge.textContent = "Layout: Desconectado";
-                gameState.running = false;
-                gameOverlay.style.display = 'flex';
-                overlayInstructions.textContent = "Conecte o controle para continuar.";
-                pressedStream.innerHTML = `<span class="empty-badges-hint">Nenhum botão pressionado</span>`;
+            if (activeGamepadIndex !== e.gamepad.index) {
+                return;
             }
+            activeGamepadIndex = null;
+            controllerName.textContent = 'Gamepad disconnected.';
+            layoutBadge.textContent = 'Layout: Disconnected';
+            gameState.running = false;
+            gameOverlay.style.display = 'flex';
+            overlayInstructions.textContent = 'Connect a controller to resume.';
+            pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
         });
 
-        /* =================== LÓGICA DO JOGO =================== */
         const gameState = {
             running: false,
             score: 0,
@@ -498,7 +499,6 @@
 
         function spawnAsteroid() {
             if (Math.random() < 0.04) {
-                // Base speed multiplicada pelo seletor de velocidade
                 const baseSpeed = Math.random() * 3 + 2.5;
                 gameState.asteroids.push({
                     x: canvas.width + 30,
@@ -514,7 +514,6 @@
         function gameLoop(timestamp) {
             requestAnimationFrame(gameLoop);
 
-            // Consulta direta da Gamepad API em cada tick
             const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
             let gp = null;
 
@@ -533,7 +532,6 @@
             const activeBadges = [];
 
             if (gp) {
-                // 1. Inspeciona cada botão físico e monta a string TECLA(CODIGO)
                 for (let idx = 0; idx < gp.buttons.length; idx++) {
                     const btn = gp.buttons[idx];
                     const isPressed = btn.pressed || btn.value > 0.15;
@@ -542,7 +540,6 @@
                         const name = getButtonLabel(idx);
                         activeBadges.push(`${name}(${idx})`);
 
-                        // Se estiver esperando remapeamento
                         if (listeningAction && !prevButtons[idx]) {
                             currentMappings[listeningAction].buttonIndex = idx;
                             listeningAction = null;
@@ -552,15 +549,13 @@
                     }
                 }
 
-                // Atualiza o HUD superior imediatamente
                 if (activeBadges.length > 0) {
                     pressedStream.innerHTML = activeBadges.map(item => `<span class="btn-badge">${item}</span>`).join(' ');
                 } else {
-                    pressedStream.innerHTML = `<span class="empty-badges-hint">Nenhum botão pressionado</span>`;
+                    pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
                 }
             }
 
-            // 2. Ações do Jogo com os botões mapeados
             if (gp && !listeningAction) {
                 const isActionPressed = (actionKey) => {
                     const mappedIdx = currentMappings[actionKey].buttonIndex;
@@ -593,29 +588,28 @@
                     if (isActionPressed('shoot') && timestamp - gameState.lastShot > 180) {
                         gameState.lasers.push({ x: gameState.ship.x + 15, y: gameState.ship.y, speed: 8 });
                         gameState.lastShot = timestamp;
-                        triggerRumble(0.2, 0.0, 60); // Rumble sutil do tiro
+                        triggerRumble(0.2, 0.0, 60);
                     }
                 }
 
                 prevButtons = gp.buttons.map(b => b.pressed || b.value > 0.15);
             }
 
-            // 3. Renderização no Canvas
             ctx.fillStyle = '#020617';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             if (gameState.running) {
-                // Desenha Tiros
                 ctx.fillStyle = '#38bdf8';
                 for (let i = gameState.lasers.length - 1; i >= 0; i--) {
                     const l = gameState.lasers[i];
                     l.x += l.speed;
                     ctx.fillRect(l.x, l.y - 2, 12, 4);
 
-                    if (l.x > canvas.width) gameState.lasers.splice(i, 1);
+                    if (l.x > canvas.width) {
+                        gameState.lasers.splice(i, 1);
+                    }
                 }
 
-                // Atualiza Asteroides
                 spawnAsteroid();
                 ctx.fillStyle = '#64748b';
                 for (let i = gameState.asteroids.length - 1; i >= 0; i--) {
@@ -626,7 +620,6 @@
                     ctx.arc(a.x, a.y, a.r, 0, Math.PI * 2);
                     ctx.fill();
 
-                    // Colisão Laser vs Asteroide
                     for (let j = gameState.lasers.length - 1; j >= 0; j--) {
                         const l = gameState.lasers[j];
                         const dist = Math.hypot(l.x - a.x, l.y - a.y);
@@ -634,25 +627,25 @@
                             gameState.asteroids.splice(i, 1);
                             gameState.lasers.splice(j, 1);
                             gameState.score += 100;
-                            triggerRumble(0.1, 0.3, 70); // Rumble de destruição
+                            triggerRumble(0.1, 0.3, 70);
                             break;
                         }
                     }
 
-                    // Colisão Asteroide vs Nave
                     const shipDist = Math.hypot(gameState.ship.x - a.x, gameState.ship.y - a.y);
                     if (shipDist < a.r + gameState.ship.r) {
-                        triggerRumble(1.0, 1.0, 500); // Rumble forte de colisão
+                        triggerRumble(1.0, 1.0, 500);
                         gameState.running = false;
                         gameOverlay.style.display = 'flex';
-                        overlayInstructions.innerHTML = `<span style="color:var(--danger)">Você foi destruído!</span><br>Pontuação: ${gameState.score}<br>Pressione Atirar para reiniciar`;
+                        overlayInstructions.innerHTML = `<span style="color:var(--danger)">Vessel Destroyed!</span><br>Final Score: ${gameState.score}<br>Press Shoot to Restart`;
                         break;
                     }
 
-                    if (a.x < -30) gameState.asteroids.splice(i, 1);
+                    if (a.x < -30) {
+                        gameState.asteroids.splice(i, 1);
+                    }
                 }
 
-                // Desenha a Nave
                 ctx.fillStyle = '#22c55e';
                 ctx.beginPath();
                 ctx.moveTo(gameState.ship.x + gameState.ship.r, gameState.ship.y);
@@ -662,7 +655,6 @@
                 ctx.closePath();
                 ctx.fill();
 
-                // Placar
                 ctx.fillStyle = '#f8fafc';
                 ctx.font = '16px monospace';
                 ctx.fillText(`SCORE: ${gameState.score}`, 20, 30);
