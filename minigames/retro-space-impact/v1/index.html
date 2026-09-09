@@ -1,0 +1,774 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Impact - Nokia Classic Arcade</title>
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --panel-bg: #131b2e;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --nokia-screen: #879372;
+            --nokia-pixels: #1b2612;
+            --nokia-grid: #7c8967;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .layout-tag {
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+
+        .haptic-note {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .pressed-buttons-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 38px;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .btn-badge {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 0 8px var(--accent-glow);
+            letter-spacing: 0.05em;
+        }
+
+        .empty-badges-hint {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-style: italic;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, button.action-btn {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        select:focus, button.action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 440px;
+            background: var(--nokia-screen);
+            border: 3px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .canvas-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .game-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(135, 147, 114, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(2px);
+            color: var(--nokia-pixels);
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .remap-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .remap-section.open {
+            display: flex;
+        }
+
+        .remap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--accent);
+        }
+
+        .remap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .remap-item {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remap-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .remap-btn:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .remap-btn.listening {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        .reset-link {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <div>
+                <h2>Space Impact & Diagnostics</h2>
+                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
+            </div>
+            <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
+        </header>
+
+        <div class="hud-panel">
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
+            <div id="pressedStream" class="pressed-buttons-stream">
+                <span class="empty-badges-hint">No buttons pressed</span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Enemy Speed:</label>
+                <select id="speedSelect">
+                    <option value="slow">Slow</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="toggleRemapBtn" class="action-btn">⚙️ Configure Controls</button>
+                <button id="fullscreenBtn" class="action-btn">⛶ Fullscreen</button>
+            </div>
+        </div>
+
+        <div id="remapSection" class="remap-section">
+            <div class="remap-header">
+                <h3>Input Mapping Configuration</h3>
+                <button id="resetDefaultsBtn" class="reset-link">Reset Defaults</button>
+            </div>
+            <div class="remap-grid" id="remapGridContainer"></div>
+        </div>
+
+        <div id="canvasWrapper" class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="440"></canvas>
+            <div id="gameOverlay" class="game-overlay">
+                <h1 style="font-size: 2.2rem; letter-spacing: 3px;">SPACE IMPACT</h1>
+                <p id="overlayInstructions">Press Fire to start mission.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUTTON_NAMES = {
+            xbox: {
+                0: 'A', 1: 'B', 2: 'X', 3: 'Y',
+                4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
+                8: 'Back', 9: 'Start', 10: 'LS', 11: 'RS',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'Xbox'
+            },
+            playstation: {
+                0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle',
+                4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2',
+                8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'PS', 17: 'Touchpad'
+            }
+        };
+
+        const DEFAULT_MAPPINGS = {
+            shoot: { label: 'Fire Laser / Confirm', buttonIndex: 0 },
+            boost: { label: 'Speed Boost', buttonIndex: 1 },
+            moveUp: { label: 'Move Up', buttonIndex: 12 },
+            moveDown: { label: 'Move Down', buttonIndex: 13 },
+            moveLeft: { label: 'Move Left', buttonIndex: 14 },
+            moveRight: { label: 'Move Right', buttonIndex: 15 }
+        };
+
+        // Calibrated speed profiles: Slow is very forgiving, Fast is moderately challenging
+        const SPEED_CONFIG = {
+            slow: { speedMultiplier: 0.10, spawnRate: 0.005 },
+            normal: { speedMultiplier: 0.35, spawnRate: 0.005 },
+            fast: { speedMultiplier: 0.65, spawnRate: 0.005 },
+
+            // slow: { speedMultiplier: 0.35, spawnRate: 0.015 },
+            // normal: { speedMultiplier: 0.65, spawnRate: 0.028 },
+            // fast: { speedMultiplier: 1.0, spawnRate: 0.040 }
+        };
+
+        let currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+        let listeningAction = null;
+        let activeGamepadIndex = null;
+        let controllerProfile = 'xbox';
+        let currentSpeedProfile = SPEED_CONFIG.normal;
+
+        const pressedStream = document.getElementById('pressedStream');
+        const controllerName = document.getElementById('controllerName');
+        const layoutBadge = document.getElementById('layoutBadge');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayInstructions = document.getElementById('overlayInstructions');
+        const remapSection = document.getElementById('remapSection');
+        const toggleRemapBtn = document.getElementById('toggleRemapBtn');
+        const remapGridContainer = document.getElementById('remapGridContainer');
+        const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+        const speedSelect = document.getElementById('speedSelect');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function detectProfile(idStr) {
+            const id = (idStr || '').toLowerCase();
+            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) {
+                return 'playstation';
+            }
+            return 'xbox';
+        }
+
+        function getButtonLabel(index) {
+            const profileMap = BUTTON_NAMES[controllerProfile] || BUTTON_NAMES.xbox;
+            return profileMap[index] || `B${index}`;
+        }
+
+        toggleRemapBtn.addEventListener('click', () => {
+            remapSection.classList.toggle('open');
+            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Close Controls' : '⚙️ Configure Controls';
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            currentSpeedProfile = SPEED_CONFIG[e.target.value] || SPEED_CONFIG.normal;
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                canvasWrapper.requestFullscreen().catch(err => {
+                    console.error(`Error attempting fullscreen: ${err.message}`);
+                });
+                return;
+            }
+            document.exitFullscreen();
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+        });
+
+        async function triggerRumble(weak = 0.4, strong = 0.4, duration = 120) {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = activeGamepadIndex !== null ? gamepads[activeGamepadIndex] : null;
+            if (!gp) return;
+
+            if (gp.vibrationActuator) {
+                try {
+                    await gp.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weak,
+                        strongMagnitude: strong
+                    });
+                } catch (e) {}
+                return;
+            }
+
+            if (Array.isArray(gp.hapticActuators) && gp.hapticActuators.length > 0) {
+                try {
+                    const actuator = gp.hapticActuators[0];
+                    if (typeof actuator.pulse === 'function') {
+                        await actuator.pulse(strong, duration);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function renderRemapUI() {
+            remapGridContainer.innerHTML = '';
+            Object.keys(currentMappings).forEach(actionKey => {
+                const map = currentMappings[actionKey];
+                const div = document.createElement('div');
+                div.className = 'remap-item';
+                div.innerHTML = `
+                    <span style="font-size:0.85rem;">${map.label}</span>
+                    <button class="remap-btn ${listeningAction === actionKey ? 'listening' : ''}"
+                            data-action="${actionKey}">
+                        ${listeningAction === actionKey ? 'Press any button...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
+                    </button>
+                `;
+                remapGridContainer.appendChild(div);
+            });
+
+            document.querySelectorAll('.remap-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    listeningAction = e.currentTarget.getAttribute('data-action');
+                    renderRemapUI();
+                });
+            });
+        }
+
+        resetDefaultsBtn.addEventListener('click', () => {
+            currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepadconnected', (e) => {
+            activeGamepadIndex = e.gamepad.index;
+            controllerProfile = detectProfile(e.gamepad.id);
+            controllerName.textContent = e.gamepad.id;
+            layoutBadge.textContent = `Layout: ${controllerProfile === 'playstation' ? 'PlayStation' : 'Xbox'}`;
+            overlayInstructions.textContent = 'Press Fire Laser to Start!';
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (activeGamepadIndex !== e.gamepad.index) return;
+            activeGamepadIndex = null;
+            controllerName.textContent = 'Gamepad disconnected.';
+            layoutBadge.textContent = 'Layout: Disconnected';
+            gameState.running = false;
+            gameOverlay.style.display = 'flex';
+            overlayInstructions.textContent = 'Connect a controller to resume.';
+            pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+        });
+
+        /* =================== SPACE IMPACT GAME ENGINE =================== */
+        const gameState = {
+            running: false,
+            score: 0,
+            lives: 3,
+            ship: { x: 80, y: 220, w: 32, h: 18, speed: 4.2 },
+            lasers: [],
+            enemies: [],
+            debris: [],
+            stars: [],
+            lastShot: 0
+        };
+
+        // Initialize retro parallax LCD background stars
+        for (let i = 0; i < 35; i++) {
+            gameState.stars.push({
+                x: Math.random() * canvas.width,
+                y: Math.random() * canvas.height,
+                size: Math.random() < 0.6 ? 2 : 3,
+                speed: Math.random() * 0.8 + 0.4
+            });
+        }
+
+        function startOrRestartGame() {
+            gameState.running = true;
+            gameState.score = 0;
+            gameState.lives = 3;
+            gameState.ship.x = 70;
+            gameState.ship.y = canvas.height / 2;
+            gameState.lasers = [];
+            gameState.enemies = [];
+            gameState.debris = [];
+            gameOverlay.style.display = 'none';
+        }
+
+        function spawnEnemy() {
+            if (Math.random() < currentSpeedProfile.spawnRate) {
+                const type = Math.random() < 0.5 ? 'alien' : 'cruiser';
+                gameState.enemies.push({
+                    type,
+                    x: canvas.width + 30,
+                    y: Math.random() * (canvas.height - 80) + 40,
+                    w: type === 'alien' ? 24 : 32,
+                    h: type === 'alien' ? 20 : 16,
+                    speed: (Math.random() * 1.5 + 1.8) * currentSpeedProfile.speedMultiplier,
+                    verticalWave: Math.random() * 0.05 + 0.02,
+                    baseY: Math.random() * (canvas.height - 80) + 40,
+                    timeOffset: Math.random() * 100
+                });
+            }
+        }
+
+        function addDebris(x, y) {
+            for (let i = 0; i < 8; i++) {
+                gameState.debris.push({
+                    x,
+                    y,
+                    vx: (Math.random() - 0.5) * 4,
+                    vy: (Math.random() - 0.5) * 4,
+                    size: Math.random() * 3 + 2,
+                    life: 18
+                });
+            }
+        }
+
+        let prevButtons = [];
+
+        function gameLoop(timestamp) {
+            requestAnimationFrame(gameLoop);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                gp = gamepads[activeGamepadIndex];
+            } else {
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        activeGamepadIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            const activeBadges = [];
+
+            if (gp) {
+                for (let idx = 0; idx < gp.buttons.length; idx++) {
+                    const btn = gp.buttons[idx];
+                    const isPressed = btn.pressed || btn.value > 0.15;
+
+                    if (isPressed) {
+                        const name = getButtonLabel(idx);
+                        activeBadges.push(`${name}(${idx})`);
+
+                        if (listeningAction && !prevButtons[idx]) {
+                            currentMappings[listeningAction].buttonIndex = idx;
+                            listeningAction = null;
+                            renderRemapUI();
+                        }
+                    }
+                }
+
+                if (activeBadges.length > 0) {
+                    pressedStream.innerHTML = activeBadges.map(item => `<span class="btn-badge">${item}</span>`).join(' ');
+                } else {
+                    pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+                }
+            }
+
+            if (gp && !listeningAction) {
+                const isActionPressed = (actionKey) => {
+                    const mappedIdx = currentMappings[actionKey].buttonIndex;
+                    return gp.buttons[mappedIdx]?.pressed || gp.buttons[mappedIdx]?.value > 0.3;
+                };
+
+                let mx = gp.axes[0] || 0;
+                let my = gp.axes[1] || 0;
+                if (Math.abs(mx) < 0.18) mx = 0;
+                if (Math.abs(my) < 0.18) my = 0;
+
+                if (isActionPressed('moveUp')) my = -1;
+                if (isActionPressed('moveDown')) my = 1;
+                if (isActionPressed('moveLeft')) mx = -1;
+                if (isActionPressed('moveRight')) mx = 1;
+
+                const boost = isActionPressed('boost') ? 1.6 : 1.0;
+
+                if (!gameState.running) {
+                    if (isActionPressed('shoot') && !prevButtons[currentMappings.shoot.buttonIndex]) {
+                        startOrRestartGame();
+                    }
+                } else {
+                    // Update Ship Position
+                    gameState.ship.x += mx * gameState.ship.speed * boost;
+                    gameState.ship.y += my * gameState.ship.speed * boost;
+
+                    // Clamping
+                    gameState.ship.x = Math.max(30, Math.min(canvas.width - 60, gameState.ship.x));
+                    gameState.ship.y = Math.max(25, Math.min(canvas.height - 35, gameState.ship.y));
+
+                    // Fire Laser: crisp, fast bullets without rumble on trigger
+                    if (isActionPressed('shoot') && timestamp - gameState.lastShot > 130) {
+                        gameState.lasers.push({
+                            x: gameState.ship.x + gameState.ship.w,
+                            y: gameState.ship.y + gameState.ship.h / 2,
+                            speed: 13
+                        });
+                        gameState.lastShot = timestamp;
+                    }
+                }
+
+                prevButtons = gp.buttons.map(b => b.pressed || b.value > 0.15);
+            }
+
+            // LCD Background Fill
+            ctx.fillStyle = '#879372';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // Subtle Background Starfield
+            ctx.fillStyle = '#7c8967';
+            gameState.stars.forEach(star => {
+                star.x -= star.speed;
+                if (star.x < 0) star.x = canvas.width;
+                ctx.fillRect(Math.floor(star.x), Math.floor(star.y), star.size, star.size);
+            });
+
+            if (gameState.running) {
+                // Render Lasers
+                ctx.fillStyle = '#1b2612';
+                for (let i = gameState.lasers.length - 1; i >= 0; i--) {
+                    const l = gameState.lasers[i];
+                    l.x += l.speed;
+                    ctx.fillRect(l.x, l.y - 2, 14, 4);
+
+                    if (l.x > canvas.width) {
+                        gameState.lasers.splice(i, 1);
+                    }
+                }
+
+                // Spawn & Update Enemies
+                spawnEnemy();
+                for (let i = gameState.enemies.length - 1; i >= 0; i--) {
+                    const e = gameState.enemies[i];
+                    e.x -= e.speed;
+                    e.y = e.baseY + Math.sin((timestamp + e.timeOffset) * e.verticalWave) * 16;
+
+                    // Draw Pixelated Enemy
+                    ctx.fillStyle = '#1b2612';
+                    if (e.type === 'alien') {
+                        // Alien bug shape
+                        ctx.fillRect(e.x + 4, e.y, e.w - 8, e.h);
+                        ctx.fillRect(e.x, e.y + 4, e.w, e.h - 8);
+                        ctx.fillRect(e.x + 2, e.y + 2, 4, 4);
+                    } else {
+                        // Fast cruiser shape
+                        ctx.fillRect(e.x, e.y + 4, e.w, 8);
+                        ctx.fillRect(e.x + 8, e.y, e.w - 16, e.h);
+                        ctx.fillRect(e.x + e.w - 6, e.y + 2, 6, 12);
+                    }
+
+                    // Collision: Laser hits Enemy -> Light rumble
+                    for (let j = gameState.lasers.length - 1; j >= 0; j--) {
+                        const l = gameState.lasers[j];
+                        if (l.x > e.x && l.x < e.x + e.w && l.y > e.y && l.y < e.y + e.h) {
+                            addDebris(e.x + e.w / 2, e.y + e.h / 2);
+                            gameState.enemies.splice(i, 1);
+                            gameState.lasers.splice(j, 1);
+                            gameState.score += 100;
+                            triggerRumble(0.12, 0.20, 60); // Light haptic feedback
+                            break;
+                        }
+                    }
+
+                    // Collision: Enemy hits Ship -> Strong rumble & Game Over
+                    if (
+                        e.x < gameState.ship.x + gameState.ship.w &&
+                        e.x + e.w > gameState.ship.x &&
+                        e.y < gameState.ship.y + gameState.ship.h &&
+                        e.y + e.h > gameState.ship.y
+                    ) {
+                        addDebris(gameState.ship.x + gameState.ship.w / 2, gameState.ship.y + gameState.ship.h / 2);
+                        triggerRumble(1.0, 1.0, 550); // Heavy rumble on crash
+                        gameState.running = false;
+                        gameOverlay.style.display = 'flex';
+                        overlayInstructions.innerHTML = `<span style="font-weight:bold; font-size:1.4rem;">MISSION FAILED</span><br>Final Score: ${gameState.score}<br><br>Press Fire Laser to Retry`;
+                        break;
+                    }
+
+                    if (e.x < -40) {
+                        gameState.enemies.splice(i, 1);
+                    }
+                }
+
+                // Render Debris
+                for (let i = gameState.debris.length - 1; i >= 0; i--) {
+                    const d = gameState.debris[i];
+                    d.x += d.vx;
+                    d.y += d.vy;
+                    d.life--;
+                    ctx.fillStyle = '#1b2612';
+                    ctx.fillRect(d.x, d.y, d.size, d.size);
+
+                    if (d.life <= 0) {
+                        gameState.debris.splice(i, 1);
+                    }
+                }
+
+                // Draw Nokia Space Ship (Pixel Art Style)
+                const sx = gameState.ship.x;
+                const sy = gameState.ship.y;
+                ctx.fillStyle = '#1b2612';
+                // Fuselage
+                ctx.fillRect(sx, sy + 6, 28, 6);
+                ctx.fillRect(sx + 8, sy + 3, 16, 12);
+                ctx.fillRect(sx + 24, sy + 7, 8, 4); // Nose
+                // Wings & Thruster
+                ctx.fillRect(sx + 4, sy, 8, 4);
+                ctx.fillRect(sx + 4, sy + 14, 8, 4);
+                ctx.fillRect(sx - 3, sy + 7, 3, 4); // Tail nozzle
+
+                // Top LCD Score HUD
+                ctx.fillStyle = '#1b2612';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText(`SCORE: ${gameState.score}`, 20, 26);
+            }
+        }
+
+        renderRemapUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>
