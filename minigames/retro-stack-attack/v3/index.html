@@ -1,0 +1,963 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stack Attack - Siemens Classic Arcade</title>
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --panel-bg: #131b2e;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --siemens-screen: #e59b24;
+            --siemens-pixels: #2b1803;
+            --siemens-grid: #d68f1e;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .layout-tag {
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+
+        .haptic-note {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .pressed-buttons-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 38px;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .btn-badge {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 0 8px var(--accent-glow);
+            letter-spacing: 0.05em;
+        }
+
+        .empty-badges-hint {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-style: italic;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, button.action-btn {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        select:focus, button.action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 440px;
+            background: var(--siemens-screen);
+            border: 3px solid #334155;
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .canvas-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+            image-rendering: pixelated;
+        }
+
+        .game-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(229, 155, 36, 0.92);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 14px;
+            backdrop-filter: blur(2px);
+            color: var(--siemens-pixels);
+            font-family: monospace;
+            text-align: center;
+        }
+
+        .remap-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .remap-section.open {
+            display: flex;
+        }
+
+        .remap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--accent);
+        }
+
+        .remap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .remap-item {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remap-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .remap-btn:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .remap-btn.listening {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        .reset-link {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <div>
+                <h2>Stack Attack & Diagnostics (Siemens Retro)</h2>
+                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
+            </div>
+            <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
+        </header>
+
+        <div class="hud-panel">
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
+            <div id="pressedStream" class="pressed-buttons-stream">
+                <span class="empty-badges-hint">No buttons pressed</span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Crate Drop Rate:</label>
+                <select id="speedSelect">
+                    <option value="slow">Slow</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="toggleRemapBtn" class="action-btn">⚙️ Configure Controls</button>
+                <button id="fullscreenBtn" class="action-btn">⛶ Fullscreen</button>
+            </div>
+        </div>
+
+        <div id="remapSection" class="remap-section">
+            <div class="remap-header">
+                <h3>Input Mapping Configuration</h3>
+                <button id="resetDefaultsBtn" class="reset-link">Reset Defaults</button>
+            </div>
+            <div class="remap-grid" id="remapGridContainer"></div>
+        </div>
+
+        <div id="canvasWrapper" class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="440"></canvas>
+            <div id="gameOverlay" class="game-overlay">
+                <h1 style="font-size: 2.2rem; letter-spacing: 2px;">STACK ATTACK</h1>
+                <p id="overlayInstructions">Press Jump / Start to work in the warehouse.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUTTON_NAMES = {
+            xbox: {
+                0: 'A', 1: 'B', 2: 'X', 3: 'Y',
+                4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
+                8: 'Back', 9: 'Start', 10: 'LS', 11: 'RS',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'Xbox'
+            },
+            playstation: {
+                0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle',
+                4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2',
+                8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'PS', 17: 'Touchpad'
+            }
+        };
+
+        const DEFAULT_MAPPINGS = {
+            jump: { label: 'Jump / Start', buttonIndex: 0 },
+            push: { label: 'Push Crate', buttonIndex: 2 },
+            moveLeft: { label: 'Walk Left', buttonIndex: 14 },
+            moveRight: { label: 'Walk Right', buttonIndex: 15 }
+        };
+
+        const SPEED_CONFIG = {
+            slow: { dropInterval: 3400, fallSpeed: 1.8 },
+            normal: { dropInterval: 2400, fallSpeed: 2.6 },
+            fast: { dropInterval: 1500, fallSpeed: 3.6 }
+        };
+
+        let currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+        let listeningAction = null;
+        let activeGamepadIndex = null;
+        let controllerProfile = 'xbox';
+        let currentSpeedProfile = SPEED_CONFIG.normal;
+
+        const pressedStream = document.getElementById('pressedStream');
+        const controllerName = document.getElementById('controllerName');
+        const layoutBadge = document.getElementById('layoutBadge');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayInstructions = document.getElementById('overlayInstructions');
+        const remapSection = document.getElementById('remapSection');
+        const toggleRemapBtn = document.getElementById('toggleRemapBtn');
+        const remapGridContainer = document.getElementById('remapGridContainer');
+        const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+        const speedSelect = document.getElementById('speedSelect');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function detectProfile(idStr) {
+            const id = (idStr || '').toLowerCase();
+            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) {
+                return 'playstation';
+            }
+            return 'xbox';
+        }
+
+        function getButtonLabel(index) {
+            const profileMap = BUTTON_NAMES[controllerProfile] || BUTTON_NAMES.xbox;
+            return profileMap[index] || `B${index}`;
+        }
+
+        toggleRemapBtn.addEventListener('click', () => {
+            remapSection.classList.toggle('open');
+            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Close Controls' : '⚙️ Configure Controls';
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            currentSpeedProfile = SPEED_CONFIG[e.target.value] || SPEED_CONFIG.normal;
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                canvasWrapper.requestFullscreen().catch(err => {
+                    console.error(`Error attempting fullscreen: ${err.message}`);
+                });
+                return;
+            }
+            document.exitFullscreen();
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+        });
+
+        async function triggerRumble(weak = 0.4, strong = 0.4, duration = 120) {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = activeGamepadIndex !== null ? gamepads[activeGamepadIndex] : null;
+            if (!gp) return;
+
+            if (gp.vibrationActuator) {
+                try {
+                    await gp.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weak,
+                        strongMagnitude: strong
+                    });
+                } catch (e) {}
+                return;
+            }
+
+            if (Array.isArray(gp.hapticActuators) && gp.hapticActuators.length > 0) {
+                try {
+                    const actuator = gp.hapticActuators[0];
+                    if (typeof actuator.pulse === 'function') {
+                        await actuator.pulse(strong, duration);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function renderRemapUI() {
+            remapGridContainer.innerHTML = '';
+            Object.keys(currentMappings).forEach(actionKey => {
+                const map = currentMappings[actionKey];
+                const div = document.createElement('div');
+                div.className = 'remap-item';
+                div.innerHTML = `
+                    <span style="font-size:0.85rem;">${map.label}</span>
+                    <button class="remap-btn ${listeningAction === actionKey ? 'listening' : ''}"
+                            data-action="${actionKey}">
+                        ${listeningAction === actionKey ? 'Press any button...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
+                    </button>
+                `;
+                remapGridContainer.appendChild(div);
+            });
+
+            document.querySelectorAll('.remap-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    listeningAction = e.currentTarget.getAttribute('data-action');
+                    renderRemapUI();
+                });
+            });
+        }
+
+        resetDefaultsBtn.addEventListener('click', () => {
+            currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepadconnected', (e) => {
+            activeGamepadIndex = e.gamepad.index;
+            controllerProfile = detectProfile(e.gamepad.id);
+            controllerName.textContent = e.gamepad.id;
+            layoutBadge.textContent = `Layout: ${controllerProfile === 'playstation' ? 'PlayStation' : 'Xbox'}`;
+            overlayInstructions.textContent = 'Press Jump / Start to Begin!';
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (activeGamepadIndex !== e.gamepad.index) return;
+            activeGamepadIndex = null;
+            controllerName.textContent = 'Gamepad disconnected.';
+            layoutBadge.textContent = 'Layout: Disconnected';
+            gameState.running = false;
+            gameOverlay.style.display = 'flex';
+            overlayInstructions.textContent = 'Connect a controller to resume.';
+            pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+        });
+
+        /* =================== STACK ATTACK ENGINE =================== */
+        const TILE_SIZE = 40;
+        const COLS = 12;
+        const ROWS = 8;
+        const PLAY_OFFSET_X = Math.floor((canvas.width - (COLS * TILE_SIZE)) / 2);
+        const PLAY_OFFSET_Y = 60;
+        const FLOOR_Y = PLAY_OFFSET_Y + (ROWS * TILE_SIZE);
+
+        const gameState = {
+            running: false,
+            score: 0,
+            worker: {
+                x: 0,
+                y: 0,
+                vx: 0,
+                vy: 0,
+                facing: 1,
+                isGrounded: false,
+                w: 24,
+                h: 36
+            },
+            grid: [],
+            floatingDelays: {},
+            fallingCrates: [],
+            lastDrop: 0
+        };
+
+        function resetGrid() {
+            gameState.grid = [];
+            for (let r = 0; r < ROWS; r++) {
+                gameState.grid[r] = new Array(COLS).fill(0);
+            }
+            gameState.floatingDelays = {};
+        }
+
+        function startOrRestartGame() {
+            gameState.running = true;
+            gameState.score = 0;
+            gameState.worker.x = PLAY_OFFSET_X + (5 * TILE_SIZE) + (TILE_SIZE - gameState.worker.w) / 2;
+            gameState.worker.y = FLOOR_Y - gameState.worker.h;
+            gameState.worker.vx = 0;
+            gameState.worker.vy = 0;
+            gameState.worker.isGrounded = true;
+            gameState.worker.facing = 1;
+            gameState.fallingCrates = [];
+            gameState.lastDrop = performance.now();
+            resetGrid();
+            gameOverlay.style.display = 'none';
+        }
+
+        function checkLineClears() {
+            let cleared = 0;
+            for (let r = ROWS - 1; r >= 0; r--) {
+                const full = gameState.grid[r].every(val => val === 1);
+                if (full) {
+                    cleared++;
+                    gameState.grid[r] = new Array(COLS).fill(0);
+                }
+            }
+
+            if (cleared > 0) {
+                gameState.score += cleared * 100;
+                triggerRumble(0.2, 0.4, 140);
+            }
+        }
+
+        function resolveWorkerIntrusion() {
+            // Check if worker center is trapped inside a static block
+            const workerCenterX = gameState.worker.x + gameState.worker.w / 2;
+            const workerCenterY = gameState.worker.y + gameState.worker.h / 2;
+
+            const col = Math.floor((workerCenterX - PLAY_OFFSET_X) / TILE_SIZE);
+            const row = Math.floor((workerCenterY - PLAY_OFFSET_Y) / TILE_SIZE);
+
+            if (col >= 0 && col < COLS && row >= 0 && row < ROWS) {
+                if (gameState.grid[row][col] === 1) {
+                    // Try pushing out to left or right if adjacent is empty
+                    const leftCol = col - 1;
+                    const rightCol = col + 1;
+
+                    if (leftCol >= 0 && gameState.grid[row][leftCol] === 0) {
+                        gameState.worker.x = PLAY_OFFSET_X + (leftCol * TILE_SIZE) + (TILE_SIZE - gameState.worker.w) / 2;
+                    } else if (rightCol < COLS && gameState.grid[row][rightCol] === 0) {
+                        gameState.worker.x = PLAY_OFFSET_X + (rightCol * TILE_SIZE) + (TILE_SIZE - gameState.worker.w) / 2;
+                    } else {
+                        // Pop worker above the box
+                        gameState.worker.y = PLAY_OFFSET_Y + (row * TILE_SIZE) - gameState.worker.h;
+                        gameState.worker.vy = 0;
+                        gameState.worker.isGrounded = true;
+                    }
+                }
+            }
+        }
+
+        function updateFloatingCrates(timestamp) {
+            for (let r = ROWS - 2; r >= 0; r--) {
+                for (let c = 0; c < COLS; c++) {
+                    if (gameState.grid[r][c] === 1) {
+                        const beneathEmpty = gameState.grid[r + 1][c] === 0;
+                        const key = `${r},${c}`;
+
+                        if (beneathEmpty) {
+                            if (!gameState.floatingDelays[key]) {
+                                gameState.floatingDelays[key] = timestamp;
+                            } else if (timestamp - gameState.floatingDelays[key] > 160) {
+                                gameState.grid[r][c] = 0;
+                                delete gameState.floatingDelays[key];
+                                gameState.fallingCrates.push({
+                                    col: c,
+                                    y: PLAY_OFFSET_Y + (r * TILE_SIZE)
+                                });
+                            }
+                        } else {
+                            delete gameState.floatingDelays[key];
+                        }
+                    }
+                }
+            }
+        }
+
+        function spawnCrate(timestamp) {
+            if (timestamp - gameState.lastDrop > currentSpeedProfile.dropInterval) {
+                gameState.lastDrop = timestamp;
+
+                const candidateCols = [];
+                for (let c = 0; c < COLS; c++) {
+                    if (gameState.grid[0][c] === 0) {
+                        candidateCols.push(c);
+                    }
+                }
+
+                if (candidateCols.length > 0) {
+                    const col = candidateCols[Math.floor(Math.random() * candidateCols.length)];
+                    gameState.fallingCrates.push({
+                        col,
+                        y: PLAY_OFFSET_Y - TILE_SIZE
+                    });
+                }
+            }
+        }
+
+        let prevButtons = [];
+
+        function gameLoop(timestamp) {
+            requestAnimationFrame(gameLoop);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                gp = gamepads[activeGamepadIndex];
+            } else {
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        activeGamepadIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            const activeBadges = [];
+
+            if (gp) {
+                for (let idx = 0; idx < gp.buttons.length; idx++) {
+                    const btn = gp.buttons[idx];
+                    const isPressed = btn.pressed || btn.value > 0.15;
+
+                    if (isPressed) {
+                        const name = getButtonLabel(idx);
+                        activeBadges.push(`${name}(${idx})`);
+
+                        if (listeningAction && !prevButtons[idx]) {
+                            currentMappings[listeningAction].buttonIndex = idx;
+                            listeningAction = null;
+                            renderRemapUI();
+                        }
+                    }
+                }
+
+                if (activeBadges.length > 0) {
+                    pressedStream.innerHTML = activeBadges.map(item => `<span class="btn-badge">${item}</span>`).join(' ');
+                } else {
+                    pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+                }
+            }
+
+            // Input Handling
+            if (gp && !listeningAction) {
+                const isActionPressed = (actionKey) => {
+                    const mappedIdx = currentMappings[actionKey].buttonIndex;
+                    return gp.buttons[mappedIdx]?.pressed || gp.buttons[mappedIdx]?.value > 0.3;
+                };
+
+                const justPressed = (actionKey) => {
+                    const mappedIdx = currentMappings[actionKey].buttonIndex;
+                    const down = gp.buttons[mappedIdx]?.pressed || gp.buttons[mappedIdx]?.value > 0.3;
+                    return down && !prevButtons[mappedIdx];
+                };
+
+                let stickX = gp.axes[0] || 0;
+                if (Math.abs(stickX) < 0.25) stickX = 0;
+
+                const wantLeft = isActionPressed('moveLeft') || stickX < -0.4;
+                const wantRight = isActionPressed('moveRight') || stickX > 0.4;
+
+                if (!gameState.running) {
+                    if (justPressed('jump')) {
+                        startOrRestartGame();
+                    }
+                } else {
+                    // Jump Logic
+                    if (justPressed('jump') && gameState.worker.isGrounded) {
+                        gameState.worker.vy = -7.8;
+                        gameState.worker.isGrounded = false;
+                    }
+
+                    // Push Crate Logic: Works on Grid Crates AND Mid-Air Falling Crates
+                    if (justPressed('push')) {
+                        const workerCenterY = gameState.worker.y + gameState.worker.h / 2;
+                        const targetRow = Math.floor((workerCenterY - PLAY_OFFSET_Y) / TILE_SIZE);
+                        const currentCol = Math.floor((gameState.worker.x + gameState.worker.w / 2 - PLAY_OFFSET_X) / TILE_SIZE);
+                        const targetCol = currentCol + gameState.worker.facing;
+                        const pushIntoCol = targetCol + gameState.worker.facing;
+
+                        let pushed = false;
+
+                        // 1. Check falling crates near worker in mid-air
+                        for (let i = 0; i < gameState.fallingCrates.length; i++) {
+                            const fc = gameState.fallingCrates[i];
+                            const crateY = fc.y;
+                            const yOverlap = Math.abs(crateY + TILE_SIZE / 2 - workerCenterY) < TILE_SIZE * 0.9;
+
+                            if (fc.col === targetCol && yOverlap && pushIntoCol >= 0 && pushIntoCol < COLS) {
+                                // Verify destination column isn't occupied at that height
+                                const targetRowEst = Math.max(0, Math.min(ROWS - 1, Math.floor((crateY - PLAY_OFFSET_Y) / TILE_SIZE)));
+                                if (gameState.grid[targetRowEst][pushIntoCol] === 0) {
+                                    fc.col = pushIntoCol;
+                                    triggerRumble(0.15, 0.22, 70);
+                                    pushed = true;
+                                    break;
+                                }
+                            }
+                        }
+
+                        // 2. Check static grid crates if no falling crate was pushed
+                        if (!pushed && targetRow >= 0 && targetRow < ROWS && targetCol >= 0 && targetCol < COLS && pushIntoCol >= 0 && pushIntoCol < COLS) {
+                            if (gameState.grid[targetRow][targetCol] === 1 && gameState.grid[targetRow][pushIntoCol] === 0) {
+                                gameState.grid[targetRow][targetCol] = 0;
+                                gameState.grid[targetRow][pushIntoCol] = 1;
+                                triggerRumble(0.12, 0.18, 60);
+                                checkLineClears();
+                            }
+                        }
+                    }
+
+                    // Continuous horizontal speed
+                    const moveSpeed = 3.4;
+                    if (wantLeft) {
+                        gameState.worker.vx = -moveSpeed;
+                        gameState.worker.facing = -1;
+                    } else if (wantRight) {
+                        gameState.worker.vx = moveSpeed;
+                        gameState.worker.facing = 1;
+                    } else {
+                        gameState.worker.vx = 0;
+                    }
+                }
+
+                prevButtons = gp.buttons.map(b => b.pressed || b.value > 0.15);
+            }
+
+            // Physics & Collision Update
+            if (gameState.running) {
+                updateFloatingCrates(timestamp);
+
+                // Worker Gravity & Horizontal Movement
+                gameState.worker.vy += 0.42;
+                gameState.worker.x += gameState.worker.vx;
+
+                // Horizontal Boundary Clamping
+                const minX = PLAY_OFFSET_X;
+                const maxX = PLAY_OFFSET_X + (COLS * TILE_SIZE) - gameState.worker.w;
+                gameState.worker.x = Math.max(minX, Math.min(maxX, gameState.worker.x));
+
+                // Horizontal Crate Collision against Grid
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (gameState.grid[r][c] === 1) {
+                            const crateLeft = PLAY_OFFSET_X + (c * TILE_SIZE);
+                            const crateRight = crateLeft + TILE_SIZE;
+                            const crateTop = PLAY_OFFSET_Y + (r * TILE_SIZE);
+                            const crateBottom = crateTop + TILE_SIZE;
+
+                            const workerLeft = gameState.worker.x;
+                            const workerRight = gameState.worker.x + gameState.worker.w;
+                            const workerTop = gameState.worker.y;
+                            const workerBottom = gameState.worker.y + gameState.worker.h;
+
+                            if (workerBottom > crateTop + 6 && workerTop < crateBottom - 6) {
+                                if (gameState.worker.vx > 0 && workerRight > crateLeft && workerLeft < crateLeft) {
+                                    gameState.worker.x = crateLeft - gameState.worker.w;
+                                } else if (gameState.worker.vx < 0 && workerLeft < crateRight && workerRight > crateRight) {
+                                    gameState.worker.x = crateRight;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Vertical Worker Movement
+                gameState.worker.y += gameState.worker.vy;
+                gameState.worker.isGrounded = false;
+
+                // Floor collision
+                if (gameState.worker.y + gameState.worker.h >= FLOOR_Y) {
+                    gameState.worker.y = FLOOR_Y - gameState.worker.h;
+                    gameState.worker.vy = 0;
+                    gameState.worker.isGrounded = true;
+                }
+
+                // Top of Crates Landing Collision
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (gameState.grid[r][c] === 1) {
+                            const crateLeft = PLAY_OFFSET_X + (c * TILE_SIZE);
+                            const crateRight = crateLeft + TILE_SIZE;
+                            const crateTop = PLAY_OFFSET_Y + (r * TILE_SIZE);
+
+                            const workerLeft = gameState.worker.x;
+                            const workerRight = gameState.worker.x + gameState.worker.w;
+                            const workerBottom = gameState.worker.y + gameState.worker.h;
+
+                            if (workerRight > crateLeft + 4 && workerLeft < crateRight - 4) {
+                                if (gameState.worker.vy >= 0 && workerBottom >= crateTop && workerBottom - gameState.worker.vy <= crateTop + 12) {
+                                    gameState.worker.y = crateTop - gameState.worker.h;
+                                    gameState.worker.vy = 0;
+                                    gameState.worker.isGrounded = true;
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // Falling Crates & Non-Unfair Crushing
+                spawnCrate(timestamp);
+                for (let i = gameState.fallingCrates.length - 1; i >= 0; i--) {
+                    const crate = gameState.fallingCrates[i];
+                    crate.y += currentSpeedProfile.fallSpeed;
+
+                    let landRow = ROWS - 1;
+                    for (let r = 0; r < ROWS; r++) {
+                        if (gameState.grid[r][crate.col] === 1) {
+                            landRow = r - 1;
+                            break;
+                        }
+                    }
+
+                    const targetY = PLAY_OFFSET_Y + (landRow * TILE_SIZE);
+                    const crateLeft = PLAY_OFFSET_X + (crate.col * TILE_SIZE);
+                    const crateRight = crateLeft + TILE_SIZE;
+                    const crateBottom = crate.y + TILE_SIZE;
+
+                    const workerLeft = gameState.worker.x;
+                    const workerRight = gameState.worker.x + gameState.worker.w;
+                    const workerTop = gameState.worker.y;
+
+                    // Crushing detection: ONLY triggers if falling box descends directly onto head
+                    const horizontalOverlap = workerRight > crateLeft + 6 && workerLeft < crateRight - 6;
+                    const crushedFromAbove = crateBottom >= workerTop + 4 && crateBottom <= workerTop + 18;
+
+                    if (horizontalOverlap && crushedFromAbove) {
+                        triggerRumble(1.0, 1.0, 600);
+                        gameState.running = false;
+                        gameOverlay.style.display = 'flex';
+                        overlayInstructions.innerHTML = `<span style="font-weight:bold; font-size:1.4rem;">CRUSHED!</span><br>Final Score: ${gameState.score}<br><br>Press Jump / Start to Retry`;
+                        break;
+                    }
+
+                    // Landing
+                    if (crate.y >= targetY) {
+                        if (landRow >= 0) {
+                            gameState.grid[landRow][crate.col] = 1;
+                        }
+                        gameState.fallingCrates.splice(i, 1);
+                        checkLineClears();
+                    }
+                }
+
+                // Prevent overlapping after line clearing or shifts
+                resolveWorkerIntrusion();
+            }
+
+            // Render
+            ctx.fillStyle = '#e59b24';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.fillStyle = '#d68f1e';
+            for (let c = 0; c <= COLS; c++) {
+                ctx.fillRect(PLAY_OFFSET_X + c * TILE_SIZE, PLAY_OFFSET_Y, 1, ROWS * TILE_SIZE);
+            }
+            ctx.fillRect(PLAY_OFFSET_X, FLOOR_Y, COLS * TILE_SIZE, 4);
+
+            ctx.fillStyle = '#2b1803';
+            ctx.fillRect(PLAY_OFFSET_X, PLAY_OFFSET_Y - 12, COLS * TILE_SIZE, 6);
+
+            if (gameState.running) {
+                // Grid Crates
+                for (let r = 0; r < ROWS; r++) {
+                    for (let c = 0; c < COLS; c++) {
+                        if (gameState.grid[r][c] === 1) {
+                            drawCrate(PLAY_OFFSET_X + (c * TILE_SIZE), PLAY_OFFSET_Y + (r * TILE_SIZE));
+                        }
+                    }
+                }
+
+                // Falling Crates
+                gameState.fallingCrates.forEach(crate => {
+                    drawCrate(PLAY_OFFSET_X + (crate.col * TILE_SIZE), Math.floor(crate.y));
+                });
+
+                // Worker
+                drawWorker(Math.floor(gameState.worker.x), Math.floor(gameState.worker.y), gameState.worker.facing);
+
+                ctx.fillStyle = '#2b1803';
+                ctx.font = 'bold 16px monospace';
+                ctx.fillText(`SCORE: ${gameState.score}`, 20, 30);
+                ctx.fillText(`PUSH: [Square/X]  JUMP: [A/✕]`, canvas.width - 320, 30);
+            }
+        }
+
+        function drawCrate(x, y) {
+            ctx.fillStyle = '#2b1803';
+            ctx.fillRect(x + 2, y + 2, TILE_SIZE - 4, TILE_SIZE - 4);
+
+            ctx.fillStyle = '#e59b24';
+            ctx.fillRect(x + 5, y + 5, TILE_SIZE - 10, TILE_SIZE - 10);
+
+            ctx.fillStyle = '#2b1803';
+            ctx.beginPath();
+            ctx.moveTo(x + 5, y + 5);
+            ctx.lineTo(x + TILE_SIZE - 5, y + TILE_SIZE - 5);
+            ctx.moveTo(x + TILE_SIZE - 5, y + 5);
+            ctx.lineTo(x + 5, y + TILE_SIZE - 5);
+            ctx.stroke();
+        }
+
+        function drawWorker(x, y, facing) {
+            ctx.fillStyle = '#2b1803';
+
+            ctx.fillRect(x + 5, y, 14, 6);
+            ctx.fillRect(x + 3, y + 5, 18, 3);
+            ctx.fillRect(x + 5, y + 8, 14, 8);
+            ctx.fillRect(x + 4, y + 16, 16, 12);
+
+            if (facing === 1) {
+                ctx.fillRect(x + 15, y + 18, 9, 5);
+            } else {
+                ctx.fillRect(x, y + 18, 9, 5);
+            }
+
+            ctx.fillRect(x + 5, y + 28, 5, 8);
+            ctx.fillRect(x + 14, y + 28, 5, 8);
+        }
+
+        renderRemapUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

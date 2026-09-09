@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Retro Arcade - Minigames Collection</title>
+    <style>
+        :root {
+            --bg-color: #060913;
+            --card-bg: #0f172a;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.35);
+            --border: #1e293b;
+            --border-hover: #38bdf8;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+            --nokia-green: #879372;
+            --siemens-amber: #e59b24;
+            --cyber-blue: #38bdf8;
+            --space-purple: #a855f7;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 1080px;
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-end;
+            border-bottom: 1px solid var(--border);
+            padding-bottom: 20px;
+        }
+
+        .title-area h1 {
+            font-size: 2.2rem;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            background: linear-gradient(135deg, #f8fafc 0%, var(--accent) 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .title-area p {
+            color: var(--text-dim);
+            font-size: 0.95rem;
+            margin-top: 4px;
+        }
+
+        .status-badge {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #64748b;
+        }
+
+        .status-dot.active {
+            background: #22c55e;
+            box-shadow: 0 0 8px #22c55e;
+        }
+
+        .nav-hint {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            background: rgba(15, 23, 42, 0.6);
+            padding: 8px 16px;
+            border-radius: 6px;
+            border: 1px dashed var(--border);
+        }
+
+        .nav-hint kbd {
+            background: #1e293b;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: var(--accent);
+            font-family: monospace;
+            border: 1px solid #334155;
+        }
+
+        .games-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 20px;
+        }
+
+        .game-card {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 22px;
+            text-decoration: none;
+            color: inherit;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 200px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+            outline: none;
+        }
+
+        .game-card:hover, .game-card.gamepad-focused {
+            transform: translateY(-4px);
+            border-color: var(--border-hover);
+            box-shadow: 0 12px 30px var(--accent-glow);
+        }
+
+        .game-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--accent);
+            opacity: 0.7;
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 12px;
+        }
+
+        .game-title {
+            font-size: 1.3rem;
+            font-weight: 700;
+            letter-spacing: 0.5px;
+        }
+
+        .tag {
+            font-size: 0.7rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            padding: 4px 8px;
+            border-radius: 4px;
+            font-weight: 600;
+        }
+
+        .tag-nokia {
+            background: rgba(135, 147, 114, 0.2);
+            color: #b4c29d;
+            border: 1px solid #879372;
+        }
+
+        .tag-siemens {
+            background: rgba(229, 155, 36, 0.2);
+            color: #f7b34d;
+            border: 1px solid #e59b24;
+        }
+
+        .tag-arcade {
+            background: rgba(56, 189, 248, 0.2);
+            color: #7dd3fc;
+            border: 1px solid #38bdf8;
+        }
+
+        .game-desc {
+            font-size: 0.9rem;
+            color: var(--text-dim);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .card-footer {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-size: 0.8rem;
+            color: var(--text-dim);
+            border-top: 1px solid rgba(255, 255, 255, 0.05);
+            padding-top: 14px;
+        }
+
+        .launch-btn {
+            color: var(--accent);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .game-card:hover .launch-btn, .game-card.gamepad-focused .launch-btn {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <header>
+            <div class="title-area">
+                <h1>Web Arcade Hub</h1>
+                <p>Gamepad-ready HTML5 minigames collection</p>
+            </div>
+            <div class="status-badge">
+                <div id="statusDot" class="status-dot"></div>
+                <span id="controllerStatus">Gamepad Disconnected</span>
+            </div>
+        </header>
+
+        <div class="nav-hint">
+            <span>Gamepad Navigation: Use <kbd>D-Pad</kbd> or <kbd>Left Stick</kbd> to choose game, press <kbd>A</kbd> / <kbd>✕</kbd> to launch.</span>
+        </div>
+
+        <main class="games-grid" id="gamesGrid">
+            <!-- Retro Snake -->
+            <a href="./retro-snake/index.html" class="game-card" style="--accent: var(--nokia-green);">
+                <div>
+                    <div class="card-header">
+                        <span class="game-title">Retro Snake</span>
+                        <span class="tag tag-nokia">Nokia 3310</span>
+                    </div>
+                    <p class="game-desc">The legendary Nokia green monochrome snake. Screen-wrap enabled, eat pellets, and avoid colliding with your own tail.</p>
+                </div>
+                <div class="card-footer">
+                    <span>1 Player • Classic Grid</span>
+                    <span class="launch-btn">Play Now →</span>
+                </div>
+            </a>
+
+            <!-- Retro Space Impact -->
+            <a href="./retro-space-impact/index.html" class="game-card" style="--accent: var(--nokia-green);">
+                <div>
+                    <div class="card-header">
+                        <span class="game-title">Space Impact</span>
+                        <span class="tag tag-nokia">Nokia 3310</span>
+                    </div>
+                    <p class="game-desc">Horizontal side-scrolling alien shooter in authentic retro monochrome LCD. Shoot invaders and weave through smooth waves.</p>
+                </div>
+                <div class="card-footer">
+                    <span>1 Player • Side Scroller</span>
+                    <span class="launch-btn">Play Now →</span>
+                </div>
+            </a>
+
+            <!-- Retro Stack Attack -->
+            <a href="./retro-stack-attack/index.html" class="game-card" style="--accent: var(--siemens-amber);">
+                <div>
+                    <div class="card-header">
+                        <span class="game-title">Stack Attack</span>
+                        <span class="tag tag-siemens">Siemens C45</span>
+                    </div>
+                    <p class="game-desc">The amber-display warehouse puzzle. Jump onto crates, push boxes to complete horizontal lines, and don't get crushed.</p>
+                </div>
+                <div class="card-footer">
+                    <span>1 Player • Action Puzzle</span>
+                    <span class="launch-btn">Play Now →</span>
+                </div>
+            </a>
+
+            <!-- Cyber Tank Combat -->
+            <a href="./cyber-tank/index.html" class="game-card" style="--accent: var(--cyber-blue);">
+                <div>
+                    <div class="card-header">
+                        <span class="game-title">Cyber Tank Combat</span>
+                        <span class="tag tag-arcade">Twin-Stick</span>
+                    </div>
+                    <p class="game-desc">Arena tank combat. Drive with the left stick, aim with the right stick, and eliminate pursuing enemy drones with artillery shells.</p>
+                </div>
+                <div class="card-footer">
+                    <span>1 Player • Twin-Stick Shooter</span>
+                    <span class="launch-btn">Play Now →</span>
+                </div>
+            </a>
+
+            <!-- Asteroid Defender -->
+            <a href="./asteroid/index.html" class="game-card" style="--accent: var(--space-purple);">
+                <div>
+                    <div class="card-header">
+                        <span class="game-title">Asteroid Defender</span>
+                        <span class="tag tag-arcade">Arcade</span>
+                    </div>
+                    <p class="game-desc">Fast-paced spaceship defender. Blast oncoming asteroids, boost through hazards, and survive for high scores.</p>
+                </div>
+                <div class="card-footer">
+                    <span>1 Player • Arcade Survival</span>
+                    <span class="launch-btn">Play Now →</span>
+                </div>
+            </a>
+        </main>
+    </div>
+
+    <script>
+        const cards = Array.from(document.querySelectorAll('.game-card'));
+        const statusDot = document.getElementById('statusDot');
+        const controllerStatus = document.getElementById('controllerStatus');
+
+        let activeGamepadIndex = null;
+        let selectedIndex = 0;
+        let lastNavTime = 0;
+        let prevButtonState = false;
+
+        function updateCardFocus(index) {
+            cards.forEach((card, i) => {
+                if (i === index) {
+                    card.classList.add('gamepad-focused');
+                    card.focus();
+                } else {
+                    card.classList.remove('gamepad-focused');
+                }
+            });
+        }
+
+        window.addEventListener('gamepadconnected', (e) => {
+            activeGamepadIndex = e.gamepad.index;
+            statusDot.classList.add('active');
+            controllerStatus.textContent = e.gamepad.id.split('(')[0].trim();
+            updateCardFocus(selectedIndex);
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (activeGamepadIndex === e.gamepad.index) {
+                activeGamepadIndex = null;
+                statusDot.classList.remove('active');
+                controllerStatus.textContent = 'Gamepad Disconnected';
+                cards.forEach(c => c.classList.remove('gamepad-focused'));
+            }
+        });
+
+        function pollGamepad(timestamp) {
+            requestAnimationFrame(pollGamepad);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                gp = gamepads[activeGamepadIndex];
+            } else {
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        activeGamepadIndex = i;
+                        statusDot.classList.add('active');
+                        controllerStatus.textContent = gp.id.split('(')[0].trim();
+                        break;
+                    }
+                }
+            }
+
+            if (!gp) return;
+
+            // Navigation inputs: D-Pad Up(12), Down(13), Left(14), Right(15) or Analog Stick
+            const axisX = gp.axes[0] || 0;
+            const axisY = gp.axes[1] || 0;
+
+            const dpadUp = gp.buttons[12]?.pressed;
+            const dpadDown = gp.buttons[13]?.pressed;
+            const dpadLeft = gp.buttons[14]?.pressed;
+            const dpadRight = gp.buttons[15]?.pressed;
+
+            const isUp = dpadUp || axisY < -0.5;
+            const isDown = dpadDown || axisY > 0.5;
+            const isLeft = dpadLeft || axisX < -0.5;
+            const isRight = dpadRight || axisX > 0.5;
+
+            // Navigation throttle (200ms)
+            if (timestamp - lastNavTime > 200) {
+                if (isRight || isDown) {
+                    selectedIndex = (selectedIndex + 1) % cards.length;
+                    updateCardFocus(selectedIndex);
+                    lastNavTime = timestamp;
+                } else if (isLeft || isUp) {
+                    selectedIndex = (selectedIndex - 1 + cards.length) % cards.length;
+                    updateCardFocus(selectedIndex);
+                    lastNavTime = timestamp;
+                }
+            }
+
+            // Confirm button: Button 0 (A / Cross)
+            const isConfirmDown = gp.buttons[0]?.pressed || gp.buttons[0]?.value > 0.3;
+            if (isConfirmDown && !prevButtonState) {
+                cards[selectedIndex].click();
+            }
+            prevButtonState = isConfirmDown;
+        }
+
+        // Hover sync with mouse
+        cards.forEach((card, index) => {
+            card.addEventListener('mouseenter', () => {
+                selectedIndex = index;
+                updateCardFocus(selectedIndex);
+            });
+        });
+
+        requestAnimationFrame(pollGamepad);
+    </script>
+</body>
+</html>
