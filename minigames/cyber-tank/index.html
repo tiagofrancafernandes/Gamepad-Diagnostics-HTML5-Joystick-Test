@@ -1,0 +1,802 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Cyber Tank - Gamepad Arcade</title>
+    <style>
+        :root {
+            --bg-color: #090d16;
+            --panel-bg: #131b2e;
+            --accent: #38bdf8;
+            --accent-glow: rgba(56, 189, 248, 0.4);
+            --danger: #ef4444;
+            --success: #22c55e;
+            --border: #1e293b;
+            --text-main: #f8fafc;
+            --text-dim: #94a3b8;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            user-select: none;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .main-container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 14px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            padding: 12px 20px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+        }
+
+        .layout-tag {
+            background: #0f172a;
+            padding: 6px 12px;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            color: var(--accent);
+            border: 1px solid var(--border);
+        }
+
+        .hud-panel {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 12px 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .hud-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .hud-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: var(--text-dim);
+        }
+
+        .haptic-note {
+            font-size: 0.7rem;
+            color: #64748b;
+            font-style: italic;
+        }
+
+        .pressed-buttons-stream {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            min-height: 38px;
+            align-items: center;
+            font-family: monospace;
+        }
+
+        .btn-badge {
+            background: rgba(56, 189, 248, 0.15);
+            border: 1px solid var(--accent);
+            color: var(--accent);
+            padding: 4px 10px;
+            border-radius: 4px;
+            font-size: 0.9rem;
+            font-weight: bold;
+            display: inline-flex;
+            align-items: center;
+            box-shadow: 0 0 8px var(--accent-glow);
+            letter-spacing: 0.05em;
+        }
+
+        .empty-badges-hint {
+            color: var(--text-dim);
+            font-size: 0.85rem;
+            font-style: italic;
+            font-family: 'Segoe UI', sans-serif;
+        }
+
+        .toolbar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            padding: 8px 16px;
+            border-radius: 8px;
+            gap: 12px;
+            flex-wrap: wrap;
+        }
+
+        .toolbar-group {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        select, button.action-btn {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        select:focus, button.action-btn:hover {
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .canvas-wrapper {
+            position: relative;
+            width: 100%;
+            height: 440px;
+            background: #020617;
+            border: 2px solid var(--border);
+            border-radius: 8px;
+            overflow: hidden;
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.5);
+        }
+
+        .canvas-wrapper:fullscreen {
+            width: 100vw !important;
+            height: 100vh !important;
+            border-radius: 0;
+            border: none;
+        }
+
+        canvas {
+            display: block;
+            width: 100%;
+            height: 100%;
+        }
+
+        .game-overlay {
+            position: absolute;
+            inset: 0;
+            background: rgba(2, 6, 23, 0.85);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            gap: 16px;
+            backdrop-filter: blur(4px);
+        }
+
+        .remap-section {
+            background: var(--panel-bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 16px;
+            display: none;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .remap-section.open {
+            display: flex;
+        }
+
+        .remap-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            color: var(--accent);
+        }
+
+        .remap-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 10px;
+        }
+
+        .remap-item {
+            background: #0b1120;
+            border: 1px solid var(--border);
+            padding: 10px;
+            border-radius: 6px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .remap-btn {
+            background: var(--panel-bg);
+            border: 1px solid var(--accent);
+            color: var(--text-main);
+            padding: 6px 12px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            transition: all 0.2s;
+        }
+
+        .remap-btn:hover {
+            background: var(--accent);
+            color: #000;
+        }
+
+        .remap-btn.listening {
+            background: var(--danger);
+            border-color: var(--danger);
+            color: #fff;
+            animation: pulse 1s infinite alternate;
+        }
+
+        @keyframes pulse {
+            from { opacity: 0.7; }
+            to { opacity: 1; }
+        }
+
+        .reset-link {
+            background: none;
+            border: none;
+            color: var(--text-dim);
+            cursor: pointer;
+            text-decoration: underline;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="main-container">
+        <header>
+            <div>
+                <h2>Cyber Tank & Diagnostics</h2>
+                <span id="controllerName" style="font-size: 0.8rem; color: var(--text-dim);">Press any button on your gamepad to connect</span>
+            </div>
+            <div id="layoutBadge" class="layout-tag">Layout: Disconnected</div>
+        </header>
+
+        <div class="hud-panel">
+            <div class="hud-header">
+                <span class="hud-label">Active Inputs</span>
+                <span class="haptic-note">* Haptic feedback runs best on Google Chrome; Firefox support is partial.</span>
+            </div>
+            <div id="pressedStream" class="pressed-buttons-stream">
+                <span class="empty-badges-hint">No buttons pressed</span>
+            </div>
+        </div>
+
+        <div class="toolbar">
+            <div class="toolbar-group">
+                <label for="speedSelect" style="font-size: 0.85rem; color: var(--text-dim);">Enemy Speed:</label>
+                <select id="speedSelect">
+                    <option value="slow">Slow</option>
+                    <option value="normal" selected>Normal</option>
+                    <option value="fast">Fast</option>
+                </select>
+            </div>
+
+            <div class="toolbar-group">
+                <button id="toggleRemapBtn" class="action-btn">⚙️ Configure Controls</button>
+                <button id="fullscreenBtn" class="action-btn">⛶ Fullscreen</button>
+            </div>
+        </div>
+
+        <div id="remapSection" class="remap-section">
+            <div class="remap-header">
+                <h3>Input Mapping Configuration</h3>
+                <button id="resetDefaultsBtn" class="reset-link">Reset Defaults</button>
+            </div>
+            <div class="remap-grid" id="remapGridContainer"></div>
+        </div>
+
+        <div id="canvasWrapper" class="canvas-wrapper">
+            <canvas id="gameCanvas" width="900" height="440"></canvas>
+            <div id="gameOverlay" class="game-overlay">
+                <h1 style="font-size: 2rem; letter-spacing: 2px;">CYBER TANK COMBAT</h1>
+                <p id="overlayInstructions" style="color: var(--text-dim);">Press any button on your gamepad to start.</p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const BUTTON_NAMES = {
+            xbox: {
+                0: 'A', 1: 'B', 2: 'X', 3: 'Y',
+                4: 'LB', 5: 'RB', 6: 'LT', 7: 'RT',
+                8: 'Back', 9: 'Start', 10: 'LS', 11: 'RS',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'Xbox'
+            },
+            playstation: {
+                0: 'Cross', 1: 'Circle', 2: 'Square', 3: 'Triangle',
+                4: 'L1', 5: 'R1', 6: 'L2', 7: 'R2',
+                8: 'Share', 9: 'Options', 10: 'L3', 11: 'R3',
+                12: 'D-Up', 13: 'D-Down', 14: 'D-Left', 15: 'D-Right',
+                16: 'PS', 17: 'Touchpad'
+            }
+        };
+
+        const DEFAULT_MAPPINGS = {
+            shoot: { label: 'Fire Shell / Confirm', buttonIndex: 0 },
+            boost: { label: 'Nitro Boost', buttonIndex: 1 },
+            moveUp: { label: 'Move Up', buttonIndex: 12 },
+            moveDown: { label: 'Move Down', buttonIndex: 13 },
+            moveLeft: { label: 'Move Left', buttonIndex: 14 },
+            moveRight: { label: 'Move Right', buttonIndex: 15 }
+        };
+
+        // Rebalanced speed profiles
+        const SPEED_CONFIG = {
+            slow: { factor: 0.20, spawnRate: 0.012 },
+            normal: { factor: 0.45, spawnRate: 0.022 },
+            fast: { factor: 0.75, spawnRate: 0.035 }
+        };
+
+        let currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+        let listeningAction = null;
+        let activeGamepadIndex = null;
+        let controllerProfile = 'xbox';
+        let currentSpeedProfile = SPEED_CONFIG.normal;
+
+        const pressedStream = document.getElementById('pressedStream');
+        const controllerName = document.getElementById('controllerName');
+        const layoutBadge = document.getElementById('layoutBadge');
+        const gameOverlay = document.getElementById('gameOverlay');
+        const overlayInstructions = document.getElementById('overlayInstructions');
+        const remapSection = document.getElementById('remapSection');
+        const toggleRemapBtn = document.getElementById('toggleRemapBtn');
+        const remapGridContainer = document.getElementById('remapGridContainer');
+        const resetDefaultsBtn = document.getElementById('resetDefaultsBtn');
+        const speedSelect = document.getElementById('speedSelect');
+        const fullscreenBtn = document.getElementById('fullscreenBtn');
+        const canvasWrapper = document.getElementById('canvasWrapper');
+        const canvas = document.getElementById('gameCanvas');
+        const ctx = canvas.getContext('2d');
+
+        function detectProfile(idStr) {
+            const id = (idStr || '').toLowerCase();
+            if (/(054c|dualshock|dualsense|playstation|ps\d|sony)/i.test(id)) {
+                return 'playstation';
+            }
+            return 'xbox';
+        }
+
+        function getButtonLabel(index) {
+            const profileMap = BUTTON_NAMES[controllerProfile] || BUTTON_NAMES.xbox;
+            return profileMap[index] || `B${index}`;
+        }
+
+        toggleRemapBtn.addEventListener('click', () => {
+            remapSection.classList.toggle('open');
+            toggleRemapBtn.textContent = remapSection.classList.contains('open') ? '✕ Close Controls' : '⚙️ Configure Controls';
+        });
+
+        speedSelect.addEventListener('change', (e) => {
+            currentSpeedProfile = SPEED_CONFIG[e.target.value] || SPEED_CONFIG.normal;
+        });
+
+        fullscreenBtn.addEventListener('click', () => {
+            if (!document.fullscreenElement) {
+                canvasWrapper.requestFullscreen().catch(err => {
+                    console.error(`Error attempting fullscreen: ${err.message}`);
+                });
+                return;
+            }
+            document.exitFullscreen();
+        });
+
+        document.addEventListener('fullscreenchange', () => {
+            fullscreenBtn.textContent = document.fullscreenElement ? '⛶ Exit Fullscreen' : '⛶ Fullscreen';
+        });
+
+        async function triggerRumble(weak = 0.4, strong = 0.4, duration = 120) {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            const gp = activeGamepadIndex !== null ? gamepads[activeGamepadIndex] : null;
+            if (!gp) {
+                return;
+            }
+
+            if (gp.vibrationActuator) {
+                try {
+                    await gp.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weak,
+                        strongMagnitude: strong
+                    });
+                } catch (e) {}
+                return;
+            }
+
+            if (Array.isArray(gp.hapticActuators) && gp.hapticActuators.length > 0) {
+                try {
+                    const actuator = gp.hapticActuators[0];
+                    if (typeof actuator.pulse === 'function') {
+                        await actuator.pulse(strong, duration);
+                    }
+                } catch (e) {}
+            }
+        }
+
+        function renderRemapUI() {
+            remapGridContainer.innerHTML = '';
+            Object.keys(currentMappings).forEach(actionKey => {
+                const map = currentMappings[actionKey];
+                const div = document.createElement('div');
+                div.className = 'remap-item';
+                div.innerHTML = `
+                    <span style="font-size:0.85rem;">${map.label}</span>
+                    <button class="remap-btn ${listeningAction === actionKey ? 'listening' : ''}"
+                            data-action="${actionKey}">
+                        ${listeningAction === actionKey ? 'Press any button...' : `${getButtonLabel(map.buttonIndex)}(${map.buttonIndex})`}
+                    </button>
+                `;
+                remapGridContainer.appendChild(div);
+            });
+
+            document.querySelectorAll('.remap-btn').forEach(btn => {
+                btn.addEventListener('click', (e) => {
+                    listeningAction = e.currentTarget.getAttribute('data-action');
+                    renderRemapUI();
+                });
+            });
+        }
+
+        resetDefaultsBtn.addEventListener('click', () => {
+            currentMappings = JSON.parse(JSON.stringify(DEFAULT_MAPPINGS));
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepadconnected', (e) => {
+            activeGamepadIndex = e.gamepad.index;
+            controllerProfile = detectProfile(e.gamepad.id);
+            controllerName.textContent = e.gamepad.id;
+            layoutBadge.textContent = `Layout: ${controllerProfile === 'playstation' ? 'PlayStation' : 'Xbox'}`;
+            overlayInstructions.textContent = 'Press Fire Shell to Start!';
+            renderRemapUI();
+        });
+
+        window.addEventListener('gamepaddisconnected', (e) => {
+            if (activeGamepadIndex !== e.gamepad.index) {
+                return;
+            }
+            activeGamepadIndex = null;
+            controllerName.textContent = 'Gamepad disconnected.';
+            layoutBadge.textContent = 'Layout: Disconnected';
+            gameState.running = false;
+            gameOverlay.style.display = 'flex';
+            overlayInstructions.textContent = 'Connect a controller to resume.';
+            pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+        });
+
+        /* =================== TANK COMBAT GAME ENGINE =================== */
+        const gameState = {
+            running: false,
+            score: 0,
+            tank: {
+                x: 450,
+                y: 220,
+                bodyAngle: 0,
+                turretAngle: 0,
+                speed: 3.8,
+                size: 20
+            },
+            shells: [],
+            drones: [],
+            particles: [],
+            lastShot: 0
+        };
+
+        function startOrRestartGame() {
+            gameState.running = true;
+            gameState.score = 0;
+            gameState.tank.x = canvas.width / 2;
+            gameState.tank.y = canvas.height / 2;
+            gameState.tank.bodyAngle = 0;
+            gameState.tank.turretAngle = 0;
+            gameState.shells = [];
+            gameState.drones = [];
+            gameState.particles = [];
+            gameOverlay.style.display = 'none';
+        }
+
+        function spawnDrone() {
+            if (Math.random() < currentSpeedProfile.spawnRate) {
+                let x, y;
+                if (Math.random() < 0.5) {
+                    x = Math.random() < 0.5 ? -25 : canvas.width + 25;
+                    y = Math.random() * canvas.height;
+                } else {
+                    x = Math.random() * canvas.width;
+                    y = Math.random() < 0.5 ? -25 : canvas.height + 25;
+                }
+
+                gameState.drones.push({
+                    x,
+                    y,
+                    size: 14,
+                    speed: (Math.random() * 1.2 + 1.0) * currentSpeedProfile.factor
+                });
+            }
+        }
+
+        function createExplosion(x, y, color = '#ef4444') {
+            for (let i = 0; i < 12; i++) {
+                gameState.particles.push({
+                    x,
+                    y,
+                    vx: (Math.random() - 0.5) * 6,
+                    vy: (Math.random() - 0.5) * 6,
+                    radius: Math.random() * 3 + 1,
+                    alpha: 1,
+                    color
+                });
+            }
+        }
+
+        let prevButtons = [];
+
+        function gameLoop(timestamp) {
+            requestAnimationFrame(gameLoop);
+
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            let gp = null;
+
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                gp = gamepads[activeGamepadIndex];
+            } else {
+                for (let i = 0; i < gamepads.length; i++) {
+                    if (gamepads[i]) {
+                        gp = gamepads[i];
+                        activeGamepadIndex = i;
+                        break;
+                    }
+                }
+            }
+
+            const activeBadges = [];
+
+            if (gp) {
+                for (let idx = 0; idx < gp.buttons.length; idx++) {
+                    const btn = gp.buttons[idx];
+                    const isPressed = btn.pressed || btn.value > 0.15;
+
+                    if (isPressed) {
+                        const name = getButtonLabel(idx);
+                        activeBadges.push(`${name}(${idx})`);
+
+                        if (listeningAction && !prevButtons[idx]) {
+                            currentMappings[listeningAction].buttonIndex = idx;
+                            listeningAction = null;
+                            renderRemapUI();
+                        }
+                    }
+                }
+
+                if (activeBadges.length > 0) {
+                    pressedStream.innerHTML = activeBadges.map(item => `<span class="btn-badge">${item}</span>`).join(' ');
+                } else {
+                    pressedStream.innerHTML = '<span class="empty-badges-hint">No buttons pressed</span>';
+                }
+            }
+
+            if (gp && !listeningAction) {
+                const isActionPressed = (actionKey) => {
+                    const mappedIdx = currentMappings[actionKey].buttonIndex;
+                    return gp.buttons[mappedIdx]?.pressed || gp.buttons[mappedIdx]?.value > 0.3;
+                };
+
+                let mx = gp.axes[0] || 0;
+                let my = gp.axes[1] || 0;
+                if (Math.abs(mx) < 0.18) mx = 0;
+                if (Math.abs(my) < 0.18) my = 0;
+
+                if (isActionPressed('moveUp')) my = -1;
+                if (isActionPressed('moveDown')) my = 1;
+                if (isActionPressed('moveLeft')) mx = -1;
+                if (isActionPressed('moveRight')) mx = 1;
+
+                let rx = gp.axes[2] || 0;
+                let ry = gp.axes[3] || 0;
+                if (Math.abs(rx) < 0.2) rx = 0;
+                if (Math.abs(ry) < 0.2) ry = 0;
+
+                const boost = isActionPressed('boost') ? 1.75 : 1.0;
+
+                if (!gameState.running) {
+                    if (isActionPressed('shoot') && !prevButtons[currentMappings.shoot.buttonIndex]) {
+                        startOrRestartGame();
+                    }
+                } else {
+                    if (mx !== 0 || my !== 0) {
+                        gameState.tank.x += mx * gameState.tank.speed * boost;
+                        gameState.tank.y += my * gameState.tank.speed * boost;
+                        gameState.tank.bodyAngle = Math.atan2(my, mx);
+
+                        if (boost > 1.0 && Math.random() < 0.4) {
+                            createExplosion(gameState.tank.x, gameState.tank.y, '#38bdf8');
+                        }
+                    }
+
+                    gameState.tank.x = Math.max(25, Math.min(canvas.width - 25, gameState.tank.x));
+                    gameState.tank.y = Math.max(25, Math.min(canvas.height - 25, gameState.tank.y));
+
+                    if (rx !== 0 || ry !== 0) {
+                        gameState.tank.turretAngle = Math.atan2(ry, rx);
+                    } else if (mx !== 0 || my !== 0) {
+                        gameState.tank.turretAngle = gameState.tank.bodyAngle;
+                    }
+
+                    // Faster fire rate: 110ms interval (no rumble on trigger pull)
+                    if (isActionPressed('shoot') && timestamp - gameState.lastShot > 110) {
+                        const barrelLength = 26;
+                        const shellX = gameState.tank.x + Math.cos(gameState.tank.turretAngle) * barrelLength;
+                        const shellY = gameState.tank.y + Math.sin(gameState.tank.turretAngle) * barrelLength;
+
+                        // Shell velocity increased from 9 to 14
+                        gameState.shells.push({
+                            x: shellX,
+                            y: shellY,
+                            vx: Math.cos(gameState.tank.turretAngle) * 14,
+                            vy: Math.sin(gameState.tank.turretAngle) * 14
+                        });
+
+                        gameState.lastShot = timestamp;
+                    }
+                }
+
+                prevButtons = gp.buttons.map(b => b.pressed || b.value > 0.15);
+            }
+
+            ctx.fillStyle = '#020617';
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            ctx.strokeStyle = '#0f172a';
+            ctx.lineWidth = 1;
+            for (let gx = 0; gx < canvas.width; gx += 40) {
+                ctx.beginPath();
+                ctx.moveTo(gx, 0);
+                ctx.lineTo(gx, canvas.height);
+                ctx.stroke();
+            }
+            for (let gy = 0; gy < canvas.height; gy += 40) {
+                ctx.beginPath();
+                ctx.moveTo(0, gy);
+                ctx.lineTo(canvas.width, gy);
+                ctx.stroke();
+            }
+
+            if (gameState.running) {
+                for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                    const p = gameState.particles[i];
+                    p.x += p.vx;
+                    p.y += p.vy;
+                    p.alpha -= 0.03;
+                    if (p.alpha <= 0) {
+                        gameState.particles.splice(i, 1);
+                        continue;
+                    }
+                    ctx.save();
+                    ctx.globalAlpha = p.alpha;
+                    ctx.fillStyle = p.color;
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.radius, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.restore();
+                }
+
+                ctx.fillStyle = '#facc15';
+                for (let i = gameState.shells.length - 1; i >= 0; i--) {
+                    const s = gameState.shells[i];
+                    s.x += s.vx;
+                    s.y += s.vy;
+
+                    ctx.beginPath();
+                    ctx.arc(s.x, s.y, 3.5, 0, Math.PI * 2);
+                    ctx.fill();
+
+                    if (s.x < 0 || s.x > canvas.width || s.y < 0 || s.y > canvas.height) {
+                        gameState.shells.splice(i, 1);
+                    }
+                }
+
+                spawnDrone();
+                for (let i = gameState.drones.length - 1; i >= 0; i--) {
+                    const d = gameState.drones[i];
+
+                    const angleToPlayer = Math.atan2(gameState.tank.y - d.y, gameState.tank.x - d.x);
+                    d.x += Math.cos(angleToPlayer) * d.speed;
+                    d.y += Math.sin(angleToPlayer) * d.speed;
+
+                    ctx.fillStyle = '#ef4444';
+                    ctx.strokeStyle = '#f87171';
+                    ctx.lineWidth = 2;
+                    ctx.beginPath();
+                    ctx.arc(d.x, d.y, d.size, 0, Math.PI * 2);
+                    ctx.fill();
+                    ctx.stroke();
+
+                    // Collision: Shell hits Drone -> Light, subtle rumble
+                    for (let j = gameState.shells.length - 1; j >= 0; j--) {
+                        const s = gameState.shells[j];
+                        const dist = Math.hypot(s.x - d.x, s.y - d.y);
+                        if (dist < d.size + 4) {
+                            createExplosion(d.x, d.y, '#f97316');
+                            gameState.drones.splice(i, 1);
+                            gameState.shells.splice(j, 1);
+                            gameState.score += 150;
+                            triggerRumble(0.12, 0.20, 60);
+                            break;
+                        }
+                    }
+
+                    // Collision: Drone hits Tank -> Heavy rumble on explosion
+                    const distToTank = Math.hypot(gameState.tank.x - d.x, gameState.tank.y - d.y);
+                    if (distToTank < d.size + gameState.tank.size) {
+                        createExplosion(gameState.tank.x, gameState.tank.y, '#ef4444');
+                        triggerRumble(1.0, 1.0, 600);
+                        gameState.running = false;
+                        gameOverlay.style.display = 'flex';
+                        overlayInstructions.innerHTML = `<span style="color:var(--danger)">Tank Destroyed!</span><br>Combat Score: ${gameState.score}<br>Press Fire Shell to Deploy`;
+                        break;
+                    }
+                }
+
+                ctx.save();
+                ctx.translate(gameState.tank.x, gameState.tank.y);
+                ctx.rotate(gameState.tank.bodyAngle);
+
+                ctx.fillStyle = '#1e293b';
+                ctx.fillRect(-18, -16, 36, 7);
+                ctx.fillRect(-18, 9, 36, 7);
+
+                ctx.fillStyle = '#22c55e';
+                ctx.fillRect(-14, -10, 28, 20);
+                ctx.restore();
+
+                ctx.save();
+                ctx.translate(gameState.tank.x, gameState.tank.y);
+                ctx.rotate(gameState.tank.turretAngle);
+
+                ctx.fillStyle = '#38bdf8';
+                ctx.fillRect(0, -3, 24, 6);
+
+                ctx.fillStyle = '#16a34a';
+                ctx.beginPath();
+                ctx.arc(0, 0, 9, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+
+                ctx.fillStyle = '#f8fafc';
+                ctx.font = '16px monospace';
+                ctx.fillText(`SCORE: ${gameState.score}`, 20, 30);
+            }
+        }
+
+        renderRemapUI();
+        requestAnimationFrame(gameLoop);
+    </script>
+</body>
+</html>

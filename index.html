@@ -189,7 +189,7 @@
                     <button id="rumbleBtn" style="width: 100%;">
                         <span>Test Haptic Feedback (Vibration)</span>
                         <br>
-                        <span style="font-size: 0.6rem; font-style: italic;">Best on Google Chrome browser</span>
+                        <span style="font-size: 0.6rem; font-style: italic;">Works across Chrome and Firefox (dual-rumble / hapticActuators)</span>
                     </button>
                 </div>
             </div>
@@ -277,6 +277,74 @@
             return null;
         }
 
+        /**
+         * Resolves the active gamepad instance with fallbacks for browser snapshots.
+         */
+        function getConnectedGamepad() {
+            const gamepads = navigator.getGamepads ? navigator.getGamepads() : [];
+            if (activeGamepadIndex !== null && gamepads[activeGamepadIndex]) {
+                return gamepads[activeGamepadIndex];
+            }
+
+            for (let i = 0; i < gamepads.length; i++) {
+                if (gamepads[i]) {
+                    activeGamepadIndex = i;
+                    return gamepads[i];
+                }
+            }
+
+            return null;
+        }
+
+        /**
+         * Cross-browser vibration executor (Chrome vibrationActuator + Firefox hapticActuators fallback).
+         */
+        async function triggerGamepadVibration(weak = 0.8, strong = 0.8, duration = 400) {
+            const gamepad = getConnectedGamepad();
+            if (!gamepad) {
+                return false;
+            }
+
+            // Method 1: Modern Chromium standard (vibrationActuator)
+            if (gamepad.vibrationActuator) {
+                try {
+                    await gamepad.vibrationActuator.playEffect('dual-rumble', {
+                        startDelay: 0,
+                        duration: duration,
+                        weakMagnitude: weak,
+                        strongMagnitude: strong
+                    });
+                    return true;
+                } catch (e) {
+                    // Fallback to older actuator syntax if dual-rumble throws
+                }
+            }
+
+            // Method 2: Firefox / Legacy standard (hapticActuators array)
+            if (Array.isArray(gamepad.hapticActuators) && gamepad.hapticActuators.length > 0) {
+                try {
+                    const actuator = gamepad.hapticActuators[0];
+                    if (typeof actuator.pulse === 'function') {
+                        await actuator.pulse(strong, duration);
+                        return true;
+                    }
+                    if (typeof actuator.playEffect === 'function') {
+                        await actuator.playEffect('dual-rumble', {
+                            startDelay: 0,
+                            duration: duration,
+                            weakMagnitude: weak,
+                            strongMagnitude: strong
+                        });
+                        return true;
+                    }
+                } catch (e) {
+                    // Actuator invocation failed
+                }
+            }
+
+            return false;
+        }
+
         layoutSelector.addEventListener('change', (event) => {
             activeLayout = event.target.value;
             renderStaticElements();
@@ -308,22 +376,10 @@
         });
 
         rumbleBtn.addEventListener('click', async () => {
-            if (activeGamepadIndex === null) {
-                return;
+            const triggered = await triggerGamepadVibration(0.8, 0.8, 400);
+            if (!triggered) {
+                alert('Vibration failed or is not supported by your current browser/gamepad combination.');
             }
-
-            const gamepad = navigator.getGamepads()[activeGamepadIndex];
-            if (!gamepad?.vibrationActuator) {
-                alert('Vibration API not supported by this browser/controller.');
-                return;
-            }
-
-            await gamepad.vibrationActuator.playEffect('dual-rumble', {
-                startDelay: 0,
-                duration: 400,
-                weakMagnitude: 0.8,
-                strongMagnitude: 0.8
-            });
         });
 
         function renderStaticElements() {
@@ -370,11 +426,7 @@
         function pollGamepad() {
             requestAnimationFrame(pollGamepad);
 
-            if (activeGamepadIndex === null) {
-                return;
-            }
-
-            const gamepad = navigator.getGamepads()[activeGamepadIndex];
+            const gamepad = getConnectedGamepad();
             if (!gamepad) {
                 return;
             }
