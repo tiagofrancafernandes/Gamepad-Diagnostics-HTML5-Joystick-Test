@@ -1,0 +1,397 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gamepad Input Tester</title>
+    <style>
+        :root {
+            --bg-color: #0f172a;
+            --card-bg: #1e293b;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --accent: #38bdf8;
+            --active-color: #22c55e;
+            --border-color: #334155;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: monospace, sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-color);
+            color: var(--text-main);
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 900px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid var(--border-color);
+            padding-bottom: 16px;
+        }
+
+        .controls-panel {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+        }
+
+        select, button {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            color: var(--text-main);
+            padding: 8px 12px;
+            border-radius: 6px;
+            cursor: pointer;
+        }
+
+        .status-box {
+            background-color: var(--card-bg);
+            padding: 16px;
+            border-radius: 8px;
+            border: 1px solid var(--border-color);
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+            gap: 16px;
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .card h3 {
+            font-size: 0.95rem;
+            color: var(--text-muted);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .buttons-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 8px;
+        }
+
+        .btn-indicator {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            background: var(--bg-color);
+            border: 1px solid var(--border-color);
+            padding: 6px 10px;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            transition: background 0.1s ease, border-color 0.1s ease;
+        }
+
+        .btn-indicator.active {
+            background-color: rgba(34, 197, 94, 0.2);
+            border-color: var(--active-color);
+            color: #4ade80;
+            font-weight: bold;
+        }
+
+        .axis-row {
+            margin-bottom: 12px;
+        }
+
+        .axis-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            margin-bottom: 4px;
+        }
+
+        .axis-bar-container {
+            width: 100%;
+            height: 10px;
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 5px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .axis-bar {
+            position: absolute;
+            top: 0;
+            bottom: 0;
+            left: 50%;
+            width: 0%;
+            background-color: var(--accent);
+            transition: width 0.05s ease, left 0.05s ease;
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: var(--text-muted);
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h2>Gamepad Diagnostics</h2>
+            <div class="controls-panel">
+                <label for="layoutSelector">Layout:</label>
+                <select id="layoutSelector">
+                    <option value="xbox">Xbox (XInput)</option>
+                    <option value="playstation">PlayStation (DualShock)</option>
+                </select>
+            </div>
+        </header>
+
+        <div id="deviceInfo" class="status-box empty-state">
+            Press any button on your gamepad to connect.
+        </div>
+
+        <div id="diagnosticsArea" class="grid" style="display: none;">
+            <div class="card">
+                <h3>Action & Triggers</h3>
+                <div id="actionButtons" class="buttons-grid"></div>
+            </div>
+
+            <div class="card">
+                <h3>D-Pad & Navigation</h3>
+                <div id="dpadButtons" class="buttons-grid"></div>
+            </div>
+
+            <div class="card">
+                <h3>Analog Sticks (Axes)</h3>
+                <div id="axesContainer"></div>
+                <div style="margin-top: 16px;">
+                    <button id="rumbleBtn" style="width: 100%;">Test Haptic Feedback (Vibration)</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Layout profiles mapping W3C Standard Gamepad button indices
+        const LAYOUT_MAPS = {
+            xbox: {
+                0: 'A',
+                1: 'B',
+                2: 'X',
+                3: 'Y',
+                4: 'LB',
+                5: 'RB',
+                6: 'LT',
+                7: 'RT',
+                8: 'View / Back',
+                9: 'Menu / Start',
+                10: 'LS (Click)',
+                11: 'RS (Click)',
+                12: 'D-Pad Up',
+                13: 'D-Pad Down',
+                14: 'D-Pad Left',
+                15: 'D-Pad Right',
+                16: 'Xbox Guide',
+                axes: ['Left Stick X', 'Left Stick Y', 'Right Stick X', 'Right Stick Y']
+            },
+            playstation: {
+                0: 'Cross (✕)',
+                1: 'Circle (○)',
+                2: 'Square (□)',
+                3: 'Triangle (△)',
+                4: 'L1',
+                5: 'R1',
+                6: 'L2',
+                7: 'R2',
+                8: 'Share / Create',
+                9: 'Options',
+                10: 'L3',
+                11: 'R3',
+                12: 'D-Pad Up',
+                13: 'D-Pad Down',
+                14: 'D-Pad Left',
+                15: 'D-Pad Right',
+                16: 'PS Button',
+                17: 'Touchpad Click',
+                axes: ['Left Stick X', 'Left Stick Y', 'Right Stick X', 'Right Stick Y']
+            }
+        };
+
+        const ACTION_BUTTON_INDICES = [0, 1, 2, 3, 4, 5, 6, 7];
+        const DPAD_BUTTON_INDICES = [8, 9, 10, 11, 12, 13, 14, 15, 16, 17];
+
+        let activeGamepadIndex = null;
+        let activeLayout = 'xbox';
+
+        const layoutSelector = document.getElementById('layoutSelector');
+        const deviceInfo = document.getElementById('deviceInfo');
+        const diagnosticsArea = document.getElementById('diagnosticsArea');
+        const actionButtonsContainer = document.getElementById('actionButtons');
+        const dpadButtonsContainer = document.getElementById('dpadButtons');
+        const axesContainer = document.getElementById('axesContainer');
+        const rumbleBtn = document.getElementById('rumbleBtn');
+
+        layoutSelector.addEventListener('change', (event) => {
+            activeLayout = event.target.value;
+            renderStaticElements();
+        });
+
+        window.addEventListener('gamepadconnected', (event) => {
+            activeGamepadIndex = event.gamepad.index;
+            deviceInfo.classList.remove('empty-state');
+            diagnosticsArea.style.display = 'grid';
+            renderStaticElements();
+        });
+
+        window.addEventListener('gamepaddisconnected', (event) => {
+            if (activeGamepadIndex !== event.gamepad.index) {
+                return;
+            }
+
+            activeGamepadIndex = null;
+            deviceInfo.classList.add('empty-state');
+            deviceInfo.textContent = 'Gamepad disconnected. Press any button to reconnect.';
+            diagnosticsArea.style.display = 'none';
+        });
+
+        rumbleBtn.addEventListener('click', async () => {
+            if (activeGamepadIndex === null) {
+                return;
+            }
+
+            const gamepad = navigator.getGamepads()[activeGamepadIndex];
+            if (!gamepad?.vibrationActuator) {
+                alert('Vibration API not supported by this browser/controller.');
+                return;
+            }
+
+            await gamepad.vibrationActuator.playEffect('dual-rumble', {
+                startDelay: 0,
+                duration: 400,
+                weakMagnitude: 0.8,
+                strongMagnitude: 0.8
+            });
+        });
+
+        function renderStaticElements() {
+            const currentLayout = LAYOUT_MAPS[activeLayout];
+
+            actionButtonsContainer.innerHTML = ACTION_BUTTON_INDICES
+                .filter(idx => currentLayout[idx])
+                .map(idx => createButtonElement(idx, currentLayout[idx]))
+                .join('');
+
+            dpadButtonsContainer.innerHTML = DPAD_BUTTON_INDICES
+                .filter(idx => currentLayout[idx])
+                .map(idx => createButtonElement(idx, currentLayout[idx]))
+                .join('');
+
+            axesContainer.innerHTML = currentLayout.axes
+                .map((name, idx) => createAxisElement(idx, name))
+                .join('');
+        }
+
+        function createButtonElement(index, label) {
+            return `
+                <div class="btn-indicator" id="btn-${index}">
+                    <span>${label}</span>
+                    <span class="val" id="val-${index}">0.00</span>
+                </div>
+            `;
+        }
+
+        function createAxisElement(index, label) {
+            return `
+                <div class="axis-row">
+                    <div class="axis-label">
+                        <span>${label}</span>
+                        <span id="axis-val-${index}">0.00</span>
+                    </div>
+                    <div class="axis-bar-container">
+                        <div class="axis-bar" id="axis-bar-${index}"></div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function pollGamepad() {
+            requestAnimationFrame(pollGamepad);
+
+            if (activeGamepadIndex === null) {
+                return;
+            }
+
+            const gamepad = navigator.getGamepads()[activeGamepadIndex];
+            if (!gamepad) {
+                return;
+            }
+
+            deviceInfo.innerHTML = `
+                <strong>Device:</strong> ${gamepad.id} <br>
+                <strong>Mapping:</strong> ${gamepad.mapping || 'non-standard'} |
+                <strong>Buttons:</strong> ${gamepad.buttons.length} |
+                <strong>Axes:</strong> ${gamepad.axes.length}
+            `;
+
+            gamepad.buttons.forEach((button, index) => {
+                const element = document.getElementById(`btn-${index}`);
+                const valueDisplay = document.getElementById(`val-${index}`);
+                if (!element || !valueDisplay) {
+                    return;
+                }
+
+                const isPressed = button.pressed;
+                const buttonValue = button.value.toFixed(2);
+
+                element.classList.toggle('active', isPressed);
+                valueDisplay.textContent = buttonValue;
+            });
+
+            gamepad.axes.forEach((axisVal, index) => {
+                const textElement = document.getElementById(`axis-val-${index}`);
+                const barElement = document.getElementById(`axis-bar-${index}`);
+                if (!textElement || !barElement) {
+                    return;
+                }
+
+                textElement.textContent = axisVal.toFixed(3);
+
+                // Axis normalization: center is 50%, range [-1, 1]
+                const percentage = Math.abs(axisVal) * 50;
+                if (axisVal >= 0) {
+                    barElement.style.left = '50%';
+                    barElement.style.width = `${percentage}%`;
+                    return;
+                }
+
+                barElement.style.left = `${50 - percentage}%`;
+                barElement.style.width = `${percentage}%`;
+            });
+        }
+
+        renderStaticElements();
+        requestAnimationFrame(pollGamepad);
+    </script>
+</body>
+</html>
